@@ -12,6 +12,7 @@ import { buildChoices, quizModes } from '../../core/distractors.js';
 import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
 import { speechText } from '../../core/speech.js';
 import * as speech from '../speech.js';
+import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/word.js').Word} Word */
@@ -171,7 +172,7 @@ function renderQuiz(ctx) {
   const note = group ? groupLabel(group, ctx, cur) : orderNote(ctx, cur);
   const head = `<p class="meta">${qz.idx + 1} / ${qz.items.length}${st.format === 'choice' ? ` ｜ 正答 ${qz.ok} ｜ 第 ${qz.stage} 段階` : ''}` +
     (note ? ` ｜ ${note}` : '') + '</p>';
-  const stem = `<div class="stemrow"><div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="en">${esc(cur.en)}</div>${sayButton(ctx, 'en', '発音')}</div>`;
+  const stem = `<div class="stemrow"><div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="${LANG.htmlLang}">${esc(cur.en)}</div>${sayButton(ctx, 'en', '発音')}</div>`;
   autoSay(ctx, qz, cur);
   const pause = '<button data-action="pause">中断</button>';
   if (st.format === 'card' || (qz.choice && !qz.choice.ok)) {
@@ -210,7 +211,7 @@ function renderQuiz(ctx) {
     }[/** @type {Verdict} */ (qz.verdict)];
     const sub = [cur.exJa, cur.note].filter(Boolean).map(esc).join(' ／ ');
     h += `<div class="fb" role="status">${verdict}${missOften(ctx.book.records, keyOf(cur)) ? ' <span class="meta">よく間違える語</span>' : ''}
-      ${cur.ex ? `<div><span lang="en">${esc(cur.ex)}</span> ${sayButton(ctx, 'ex', '例文を聞く')}</div>` : ''}${sub ? `<div class="meta">${sub}</div>` : ''}
+      ${cur.ex ? `<div><span lang="${LANG.htmlLang}">${esc(cur.ex)}</span> ${sayButton(ctx, 'ex', '例文を聞く')}</div>` : ''}${sub ? `<div class="meta">${sub}</div>` : ''}
       <div class="rowbtns left"><button class="primary" data-action="next">次の問題 →</button>${pause}</div></div>`;
   } else {
     h += `<div class="rowbtns">${pause}</div>`;
@@ -227,7 +228,7 @@ function renderQuiz(ctx) {
 function sayButton(ctx, what, label) {
   if (!speech.supported) return '';
   const ok = speech.canSpeak(ctx.settings);
-  return `<button type="button" class="say" data-action="say" data-say="${what}"${ok ? '' : ' disabled title="この端末で使える英語の音声がありません(設定タブを見てください)"'}>${label}</button>`;
+  return `<button type="button" class="say" data-action="say" data-say="${what}"${ok ? '' : ' disabled title="この端末で使える${LANG.name}の音声がありません(設定タブを見てください)"'}>${label}</button>`;
 }
 
 /**

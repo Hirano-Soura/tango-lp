@@ -2,7 +2,8 @@
 // どの音声で読むか・何を読むかは core/speech.js が決める。端末内の音声だけを使い、単語や例文を外部へ送らない(INV-1)。
 // 規則とブラウザ・OS ごとの違いは Docs/24_Speech.md。
 
-import { englishVoices, pickVoice, remoteEnglishCount, normLang, rateOf } from '../core/speech.js';
+import { langVoices, pickVoice, remoteLangCount, normLang, rateOf } from '../core/speech.js';
+import { LANG } from './lang.js';
 
 /** @typedef {import('./storage.js').Settings} Settings */
 
@@ -17,17 +18,17 @@ all();
 /** このブラウザが読み上げを持つか */
 export const supported = synth !== null;
 
-/** 使ってよい英語の音声(選ぶ順) */
-export const voices = () => englishVoices(all());
+/** 使ってよい、単語帳の言語(app/lang.js)の音声(選ぶ順) */
+export const voices = () => langVoices(all(), LANG);
 
-/** インターネット経由のため使わない英語の音声の数 */
-export const remoteCount = () => remoteEnglishCount(all());
+/** インターネット経由のため使わない、単語帳の言語の音声の数 */
+export const remoteCount = () => remoteLangCount(all(), LANG);
 
 /**
  * 今の設定で読める音声があるか。
  * @param {Settings} settings
  */
-export const canSpeak = (settings) => pickVoice(all(), settings.speechVoice) !== null;
+export const canSpeak = (settings) => pickVoice(all(), settings.speechVoice, LANG) !== null;
 
 /**
  * 音声の一覧が届いたら呼ぶ。
@@ -46,7 +47,7 @@ export function onVoicesChanged(cb) {
  */
 export function speak(text, settings) {
   if (!synth || !text) return false;
-  const v = pickVoice(all(), settings.speechVoice);
+  const v = pickVoice(all(), settings.speechVoice, LANG);
   if (!v) return false;
   const u = new SpeechSynthesisUtterance(text);
   u.voice = v;

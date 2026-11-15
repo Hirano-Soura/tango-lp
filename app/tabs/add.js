@@ -8,6 +8,7 @@ import { addOneWord, importIntoBook } from '../../core/book.js';
 import { parseImport, SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
 import { aiHtml, bindAi, handleAiClick } from '../aiView.js';
+import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/importPlan.js').Plan} Plan */
@@ -162,7 +163,7 @@ function bindImport(ctx) {
     } else if (act === 'plan') {
       pasted = text.value;
       tagText = tags.value;
-      plan = planImport(ctx.book.words, parseImport(pasted), { exSrc: exSrc || undefined, tags: splitTags(tagText) });
+      plan = planImport(ctx.book.words, parseImport(pasted, LANG), { exSrc: exSrc || undefined, tags: splitTags(tagText) });
       choices = {};
       importMsg = plan.fatal !== undefined ? '' : plan.rows.length ? '' : '語が見つかりませんでした';
       importIsError = false;
@@ -233,11 +234,11 @@ function planHtml(p) {
 function rowHtml(row) {
   const w = row.word;
   let body = `<div><span class="act a-${row.action}">${ACTION_LABEL[row.action]}</span> `;
-  body += w ? `<span class="en" lang="en">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span>` : `<span class="meta">${row.ref} 行目</span>`;
+  body += w ? `<span class="en" lang="${LANG.htmlLang}">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span>` : `<span class="meta">${row.ref} 行目</span>`;
   body += '</div>';
   if (w) {
     if (w.ja) body += `<div class="ja">${jaHtml(w.ja)}</div>`;
-    if (w.ex) body += `<div class="ex" lang="en">${esc(w.ex)}</div>`;
+    if (w.ex) body += `<div class="ex" lang="${LANG.htmlLang}">${esc(w.ex)}</div>`;
     const sub = [w.exJa, w.note, ...(w.tags ?? []).map((t) => '#' + t)].filter(Boolean).map(esc).join(' ／ ');
     if (sub) body += `<div class="ex">${sub}</div>`;
   } else {

@@ -4,12 +4,18 @@
 // 規則は Docs/20_ImportFormat.md §4。
 
 import { keyOf, normPos, JA_SEP } from './word.js';
+import { ALL_LANG_FIELDS } from './lang.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./importFormat.js').ParseResult} ParseResult */
 
-/** 1 つずつ空欄を埋める・食い違いを調べる項目。例文(ex / exJa / exSrc)は一組で扱い、tags は足し合わせる */
-const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
+/**
+ * 1 つずつ空欄を埋める・食い違いを調べる項目。例文(ex / exJa / exSrc)は一組で扱い、tags は足し合わせる。
+ * 言語に固有の項目(core/lang.js の fields)も同じに扱う。英語の語は trans しか持たないので、英語の確認表は授業版と変わらない。
+ * 型の上の項目名は core/word.js の Word に合わせる(言語を足して項目が増えたら、ここの型と Word の両方に足す)。
+ */
+const FIELDS = /** @type {readonly ('pos' | 'trans' | 'ja' | 'note' | 'kind' | 'reading')[]} */ (
+  [...new Set(['pos', 'trans', 'ja', 'note', 'kind', ...ALL_LANG_FIELDS])]);
 
 /**
  * @typedef {object} Conflict

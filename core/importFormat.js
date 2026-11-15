@@ -2,8 +2,10 @@
 // 仕様は Docs/20_ImportFormat.md。版を足す・変えるときの手順は同 §1(INV-3)。
 
 import { TRANS_VALUES, POS_CODE_OF_NAME } from './word.js';
+import { DEFAULT_LANG, LANGS } from './lang.js';
 
 /** @typedef {import('./word.js').Word} Word */
+/** @typedef {import('./lang.js').LangSpec} LangSpec */
 
 /**
  * 1 行(簡易形式)または 1 項目(JSON)の解析結果。
@@ -46,23 +48,23 @@ export const SIMPLE_EXAMPLE = [
 ].join('\n');
 
 /** JSON の版ごとの読み手。過去の版の読み手を消さない(INV-3) */
-const JSON_READERS = /** @type {Record<string, (data: Record<string, unknown>) => ParseResult>} */ ({
+const JSON_READERS = /** @type {Record<string, (data: Record<string, unknown>, lang: LangSpec) => ParseResult>} */ ({
   'tango-drill/v1': readV1,
 });
 
 /** 読める版のすべて(INV-3 のテストがこの一覧と見本を突き合わせる) */
 export const READABLE_FORMATS = Object.freeze([SIMPLE_FORMAT, LEGACY_FORMAT, ...Object.keys(JSON_READERS)]);
 
-/** 語が持ってよい項目 */
+/** 語が持ってよい項目(言語に固有の項目は、言語の設定の fields を足す) */
 const WORD_KEYS = ['en', 'pos', 'trans', 'ja', 'ex', 'exJa', 'note', 'kind', 'tags', 'exSrc'];
+/** 見出し語(en)の別名。JSON の項目名として読む(新LP版。en は授業版との取り込みやすさのため内部名のまま残す) */
+const TERM_ALIAS = 'term';
 /** 文字列で持つ項目(en を除く) */
 const TEXT_KEYS = /** @type {const} */ (['pos', 'trans', 'ja', 'ex', 'exJa', 'note', 'kind', 'exSrc']);
 /** @type {readonly string[]} */
 const TRANS = TRANS_VALUES;
 const EX_SRC = ['self', 'ai', 'set'];
 
-/** かな・漢字・全角記号 */
-const JAPANESE = /[\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/;
 /** 簡易形式の区切り(半角・全角の縦棒) */
 const BAR = /[|｜]/;
 /** 行頭の箇条書き記号・番号 */
@@ -97,15 +99,16 @@ const POS_ALIASES = /** @type {Record<string, string>} */ ({
 /**
  * 貼り付けられた文字列・読み込んだファイルの中身を解析する。保存はしない(INV-2)。
  * 先頭が波括弧の入力と、json の囲み(コードブロック)を含む入力は JSON としてその版の読み手で読む。
- * それ以外は簡易形式として読む。
+ * それ以外は簡易形式として読む。見出し語の判定・簡易形式の列・言語に固有の項目は、言語の設定(core/lang.js)に従う。
  * @param {string} text
+ * @param {LangSpec} [lang] 既定は英語(授業版と同じ読み方)
  * @returns {ParseResult}
  */
-export function parseImport(text) {
+export function parseImport(text, lang = DEFAULT_LANG) {
   const src = String(text ?? '').replace(/^\ufeff/, '');
   if (!src.trim()) return fatal(SIMPLE_FORMAT, '入力が空です');
   const json = extractJson(src);
-  return json === null ? parseSimple(src) : parseJson(json);
+  return json === null ? parseSimple(src, lang) : parseJson(json, lang);
 }
 
 /**
@@ -127,9 +130,10 @@ function extractJson(src) {
 
 /**
  * @param {string} text
+ * @param {LangSpec} lang
  * @returns {ParseResult}
  */
-function parseJson(text) {
+function parseJson(text, lang) {
   /** @type {unknown} */
   let data;
   try {
@@ -138,11 +142,11 @@ function parseJson(text) {
     return fatal('json', 'JSON として読めません: ' + (e instanceof Error ? e.message : String(e)));
   }
   if (!isObject(data)) return fatal('json', 'JSON の最上位が { } ではありません');
-  if (!('format' in data)) return readLegacy(data);
+  if (!('format' in data)) return readLegacy(data, lang);
   const fmt = data.format;
   if (typeof fmt !== 'string') return fatal('json', 'format が文字列ではありません');
   const reader = JSON_READERS[fmt];
-  if (reader) return reader(data);
+  if (reader) return reader(data, lang);
   // バックアップは記録ごと置き換える別の経路(Docs/22_Storage.md)。語の取り込みには使わない
   if (fmt.startsWith(BACKUP_FORMAT_PREFIX)) {
     return fatal(fmt, 'これはバックアップのファイルです。語の取り込みではなく、バックアップの読み込みを使ってください');
@@ -158,24 +162,26 @@ function parseJson(text) {
 /**
  * tango-drill/v1: { "format": "tango-drill/v1", "words": [ 語, ... ] }
  * @param {Record<string, unknown>} data
+ * @param {LangSpec} lang
  * @returns {ParseResult}
  */
-function readV1(data) {
+function readV1(data, lang) {
   const format = 'tango-drill/v1';
   if (!Array.isArray(data.words)) return fatal(format, 'words が配列ではありません');
   // 空の単語帳を書き出したファイルも読めるよう、語 0 件は拒否せず警告にとどめる(INV-3)
   const warnings = unknownKeys(data, ['format', 'words']);
   if (data.words.length === 0) warnings.push('語が 1 つもありません');
-  return { format, rows: data.words.map((item, i) => readItem(item, i + 1)), warnings };
+  return { format, rows: data.words.map((item, i) => readItem(item, i + 1, lang)), warnings };
 }
 
 /**
  * toeic-drill の単語データ: { "words": [...], "phrases": [...] }(format 欄なし)。
  * phrases の語は kind を "phrase" にする。date / level / theme は使わない。
  * @param {Record<string, unknown>} data
+ * @param {LangSpec} lang
  * @returns {ParseResult}
  */
-function readLegacy(data) {
+function readLegacy(data, lang) {
   const format = LEGACY_FORMAT;
   const words = data.words === undefined ? [] : data.words;
   const phrases = data.phrases === undefined ? [] : data.phrases;
@@ -185,9 +191,9 @@ function readLegacy(data) {
   if (data.words === undefined && data.phrases === undefined) {
     return fatal(format, 'format 欄が無く、words / phrases も無いため読めません');
   }
-  const rows = words.map((item, i) => readItem(item, i + 1));
+  const rows = words.map((item, i) => readItem(item, i + 1, lang));
   phrases.forEach((item, i) => {
-    rows.push(readItem(isObject(item) ? { ...item, kind: 'phrase' } : item, words.length + i + 1));
+    rows.push(readItem(isObject(item) ? { ...item, kind: 'phrase' } : item, words.length + i + 1, lang));
   });
   const warnings = unknownKeys(data, ['words', 'phrases', 'date', 'level', 'theme']);
   if (rows.length === 0) warnings.push('語が 1 つもありません');
@@ -207,18 +213,25 @@ function unknownKeys(data, known) {
 
 /**
  * JSON の 1 項目を語として読む。バックアップの語(core/backup.js)も同じ規則で読む。
+ * 見出し語は en、無ければ別名の term から読む。言語に固有の項目(言語の設定の fields)も文字列として読む。
  * @param {unknown} item
  * @param {number} ref
+ * @param {LangSpec} [lang] 既定は英語
  * @returns {ParsedRow}
  */
-export function readItem(item, ref) {
+export function readItem(item, ref, lang = DEFAULT_LANG) {
   const raw = JSON.stringify(item) ?? String(item);
   if (!isObject(item)) return { ref, raw, error: '語が { } ではありません', warnings: [] };
-  const warnings = unknownKeys(item, WORD_KEYS);
-  if (typeof item.en !== 'string') return { ref, raw, error: '見出し語(en)がありません', warnings };
+  const extra = lang.fields.filter((k) => !WORD_KEYS.includes(k));
+  const warnings = unknownKeys(item, [...WORD_KEYS, ...extra, TERM_ALIAS]);
+  const term = typeof item.en === 'string' ? item.en : item.en === undefined ? item[TERM_ALIAS] : undefined;
+  if (typeof term !== 'string') return { ref, raw, error: '見出し語(en)がありません', warnings };
+  if (typeof item.en === 'string' && item[TERM_ALIAS] !== undefined && item[TERM_ALIAS] !== item.en) {
+    warnings.push(`見出し語が en と ${TERM_ALIAS} の両方にあり食い違うため、en を使いました`);
+  }
   /** @type {Record<string, string>} */
-  const fields = { en: item.en };
-  for (const k of TEXT_KEYS) {
+  const fields = { en: term };
+  for (const k of [...TEXT_KEYS, ...extra]) {
     const v = item[k];
     if (v === undefined || v === null) continue;
     if (typeof v === 'string') fields[k] = v;
@@ -228,24 +241,25 @@ export function readItem(item, ref) {
   let tags;
   if (Array.isArray(item.tags) && item.tags.every((t) => typeof t === 'string')) tags = item.tags;
   else if (item.tags !== undefined && item.tags !== null) warnings.push('tags が文字列の配列ではないため無視しました');
-  return buildRow(fields, tags, ref, raw, warnings);
+  return buildRow(fields, tags, ref, raw, warnings, lang);
 }
 
 // --- 簡易形式 --------------------------------------------------------------------
 
 /**
- * 1 行 1 語。項目は「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」。後ろの項目は省略できる。
+ * 1 行 1 語。項目の並びは言語の設定の columns(英語は「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」)。後ろの項目は省略できる。
  * @param {string} src
+ * @param {LangSpec} lang
  * @returns {ParseResult}
  */
-function parseSimple(src) {
+function parseSimple(src, lang) {
   /** @type {ParsedRow[]} */
   const rows = [];
   src.split(/\r\n|\r|\n/).forEach((line, i) => {
     const t = line.trim();
     // 空行・コードブロックの囲み・表の区切り行は、行として数えない
     if (!t || /^(```|~~~)/.test(t) || TABLE_RULE.test(t)) return;
-    rows.push(readLine(t, i + 1));
+    rows.push(readLine(t, i + 1, lang));
   });
   return { format: SIMPLE_FORMAT, rows, warnings: [] };
 }
@@ -253,9 +267,10 @@ function parseSimple(src) {
 /**
  * @param {string} line 前後の空白を落とした 1 行
  * @param {number} ref
+ * @param {LangSpec} lang
  * @returns {ParsedRow}
  */
-function readLine(line, ref) {
+function readLine(line, ref, lang) {
   const raw = line;
   // 先頭と末尾の縦棒(Markdown の表の行)は項目を持たないので落とす
   let body = line.replace(/^[|｜]/, '').replace(/\s*[|｜]\s*$/, '');
@@ -267,20 +282,20 @@ function readLine(line, ref) {
   const en = cells[0];
   if (!sep) {
     // 区切りの無い行は「見出し語だけの行」か「前置きの文」のどちらか
-    if (!looksEnglish(en)) return { ref, raw, skipped: '英語の見出し語ではありません(前置きの文など)', warnings: [] };
+    if (!lang.looksTerm(en)) return { ref, raw, skipped: `${lang.name}の見出し語ではありません(前置きの文など)`, warnings: [] };
     const n = collapse(en).split(' ').length;
     if (/[:!?]/.test(en) || (/\.$/.test(en) && n > 2) || n > MAX_BARE_WORDS) {
       return { ref, raw, skipped: '文のように見えます(前置きの文など)', warnings: [] };
     }
   }
-  if (cells.length > 6) return { ref, raw, error: `項目が多すぎます(${cells.length} 個。6 個まで)`, warnings: [] };
-  const [, pos, ja, ex, exJa, note] = cells;
+  const cols = lang.columns;
+  if (cells.length > cols.length) return { ref, raw, error: `項目が多すぎます(${cells.length} 個。${cols.length} 個まで)`, warnings: [] };
   /** @type {Record<string, string>} */
   const fields = { en };
-  for (const [k, v] of /** @type {const} */ ([['pos', pos], ['ja', ja], ['ex', ex], ['exJa', exJa], ['note', note]])) {
-    if (v) fields[k] = v;
-  }
-  return buildRow(fields, undefined, ref, raw, []);
+  cols.forEach((c, i) => {
+    if (i > 0 && cells[i]) fields[c.field] = cells[i];
+  });
+  return buildRow(fields, undefined, ref, raw, [], lang);
 }
 
 /**
@@ -320,28 +335,40 @@ function isHeader(cells) {
  * @param {number} ref
  * @param {string} raw
  * @param {string[]} warnings
+ * @param {LangSpec} lang
  * @returns {ParsedRow}
  */
-function buildRow(fields, tags, ref, raw, warnings) {
+function buildRow(fields, tags, ref, raw, warnings, lang) {
   const en = collapse(fields.en);
   if (!en) return { ref, raw, error: '見出し語が空です', warnings };
-  if (!looksEnglish(en)) return { ref, raw, error: `見出し語が英語ではありません: ${en}`, warnings };
+  if (!lang.looksTerm(en)) return { ref, raw, error: `見出し語が${lang.name}ではありません: ${en}`, warnings };
 
   /** @param {string} k */
   const pick = (k) => (fields[k] === undefined ? '' : fields[k].trim());
 
   /** @type {Word} */
   const word = { en };
+  // 自他(trans)は、言語の設定が宣言したときだけ読む(英語)
+  const hasTrans = lang.fields.includes('trans');
   // 品詞に添えた自他の印(「動(他)」「他動詞」など。簡易形式で自他を書く唯一の場所)は trans に移す
-  const marked = splitTransMark(pick('pos'));
+  const marked = hasTrans ? splitTransMark(pick('pos')) : { pos: pick('pos') };
   if (marked.pos) word.pos = normalizePos(marked.pos);
   for (const k of /** @type {const} */ (['ja', 'ex', 'exJa', 'note'])) {
     const v = pick(k);
     if (v) word[k] = v;
   }
+  // 言語に固有の文字列の項目(自他を除く。中国語の見本の読み reading など)
+  const own = /** @type {Record<string, string>} */ (/** @type {unknown} */ (word));
+  for (const k of lang.fields) {
+    if (k === 'trans') continue;
+    const v = pick(k);
+    if (v) own[k] = v;
+  }
   const trans = pick('trans');
   let given = '';
-  if (trans) {
+  if (trans && !hasTrans) {
+    warnings.push(`trans(自他)は${lang.name}の語には使わないため無視しました`);
+  } else if (trans) {
     const t = trans.toLowerCase().replace(/\s/g, '');
     const v = t === 'vi/vt' ? 'vt/vi' : t;
     if (TRANS.includes(v)) given = v;
@@ -424,12 +451,13 @@ function isExSrc(v) {
 }
 
 /**
- * 英語の見出し語として読めるか(英字を含み、かな・漢字・全角文字を含まない)。
+ * 英語の見出し語として読めるか(英字を含み、かな・漢字・全角文字を含まない)。判定の本体は英語の設定(core/lang.js)の looksTerm。
+ * 授業版と同じ名前で残す(授業版からの取り込みで呼び出し側がぶつからないように)。言語を選べる処理は言語の設定の looksTerm を引く。
  * @param {string | undefined} s
  * @returns {boolean}
  */
 export function looksEnglish(s) {
-  return !!s && /[A-Za-z]/.test(s) && !JAPANESE.test(s);
+  return !!s && LANGS.en.looksTerm(s);
 }
 
 /**

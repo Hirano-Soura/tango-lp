@@ -5,6 +5,7 @@ import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
 import { keyOf, isPhrase, KIND_NAMES } from '../../core/word.js';
 import { editWord, deleteWord, toggleStar } from '../../core/book.js';
 import { filterWords } from '../../core/search.js';
+import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 
@@ -56,9 +57,9 @@ function wordsHtml(book) {
     h += `<li class="word" data-key="${esc(k)}">
       <button class="star${star.has(k) ? ' on' : ''}" data-action="star" aria-pressed="${star.has(k)}" aria-label="印">★</button>
       <div class="body">
-        <div><span class="en${isPhrase(w) ? ' ph' : ''}" lang="en">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span></div>
+        <div><span class="en${isPhrase(w) ? ' ph' : ''}" lang="${LANG.htmlLang}">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span></div>
         <div class="ja">${jaHtml(w.ja)}</div>
-        ${w.ex ? `<div class="ex" lang="en">${esc(w.ex)}</div>` : ''}${sub ? `<div class="ex">${sub}</div>` : ''}
+        ${w.ex ? `<div class="ex" lang="${LANG.htmlLang}">${esc(w.ex)}</div>` : ''}${sub ? `<div class="ex">${sub}</div>` : ''}
         <div class="meta">${meta}</div>
       </div>
       <div class="ops"><button data-action="edit">編集</button><button data-action="delete">削除</button></div>

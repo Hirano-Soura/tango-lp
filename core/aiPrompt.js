@@ -2,12 +2,13 @@
 // 返答は利用者が追加タブの「まとめて取り込む」に貼り、確認表を経て入れる(INV-2)。送信はしない(INV-1)。
 // 依頼文は簡易形式 simple/v1(Docs/20_ImportFormat.md §3)で答えさせる。規則は Docs/20_ImportFormat.md §6。
 
-import { looksEnglish } from './importFormat.js';
+import { DEFAULT_LANG } from './lang.js';
 
 /** @typedef {import('./word.js').Word} Word */
+/** @typedef {import('./lang.js').LangSpec} LangSpec */
 
 /**
- * 依頼文の版。依頼文を変えたら上げる。版ごとの全文は tests/core/fixtures/ai/prompt_<版>*.txt に固定してあり、
+ * 英語の依頼文の版(言語の設定 core/lang.js の prompt が指す)。依頼文を変えたら上げる。版ごとの全文は tests/core/fixtures/ai/prompt_<版>*.txt に固定してあり、
  * 版を上げずに文面を変えるとテスト(tests/core/aiPrompt.test.js)が落ちる。
  * 返答の見本(tests/core/fixtures/ai/replies.json)はどの版への返答かを持つ。上げたら見本を新しい版で採り直す
  * (今の版への本物の見本の無い提供元はテストが todo にする。古い版の見本は、貼られうる入力として残す)。
@@ -15,17 +16,26 @@ import { looksEnglish } from './importFormat.js';
 export const AI_PROMPT_VERSION = 'v2';
 
 /**
+ * 依頼文の版ごとの作り手。言語の設定の prompt がこの鍵を指す(消費側は言語の ID を見ない。LC-2)。
+ * 過去の版の作り手は残さない(返答の見本だけを貼られうる入力として残す)。
+ * @type {Readonly<Record<string, (words: readonly string[], examples: boolean) => string>>}
+ */
+export const PROMPTS = Object.freeze({ [AI_PROMPT_VERSION]: promptV2 });
+
+/**
  * @typedef {object} AiPromptOptions
  * @property {boolean} [examples] 例文と和訳も作ってもらう(既定: true)
+ * @property {LangSpec} [lang] 語の言語(既定: 英語)。言語の設定の prompt の版で作る
  */
 
 /**
- * 依頼する語の一覧を、貼られた文から取り出す。1 行 1 語。空行・重複と、英語として読めない行
- * (見出し語と同じ判定 looksEnglish: 英字を含み、かな・漢字・全角文字を含まない)は除く。
+ * 依頼する語の一覧を、貼られた文から取り出す。1 行 1 語。空行・重複と、その言語の見出し語として読めない行
+ * (見出し語と同じ判定。言語の設定の looksTerm。英語は英字を含み、かな・漢字・全角文字を含まない)は除く。
  * @param {string} text
+ * @param {LangSpec} [lang] 既定は英語
  * @returns {{ words: string[], ignored: string[] }}
  */
-export function requestWords(text) {
+export function requestWords(text, lang = DEFAULT_LANG) {
   /** @type {string[]} */
   const words = [];
   /** @type {string[]} */
@@ -33,21 +43,31 @@ export function requestWords(text) {
   for (const line of String(text ?? '').split(/\r?\n/)) {
     const w = line.replace(/\s+/g, ' ').trim();
     if (!w) continue;
-    if (!looksEnglish(w)) ignored.push(w);
+    if (!lang.looksTerm(w)) ignored.push(w);
     else if (!words.includes(w)) words.push(w);
   }
   return { words, ignored };
 }
 
 /**
- * 依頼文を作る。語が無ければ空文字。
+ * 依頼文を作る。語が無いか、言語が依頼文を持たない(言語の設定の prompt が null)なら空文字。
  * @param {readonly string[]} words
  * @param {AiPromptOptions} [opts]
  * @returns {string}
  */
 export function aiPrompt(words, opts = {}) {
-  if (!words.length) return '';
-  const examples = opts.examples ?? true;
+  const make = PROMPTS[(opts.lang ?? DEFAULT_LANG).prompt ?? ''];
+  if (!words.length || !make) return '';
+  return make(words, opts.examples ?? true);
+}
+
+/**
+ * 英語の依頼文 v2(授業版と同じ全文。tests/core/fixtures/ai/prompt_v2*.txt)。
+ * @param {readonly string[]} words
+ * @param {boolean} examples
+ * @returns {string}
+ */
+function promptV2(words, examples) {
   const cols = examples ? '見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足' : '見出し語 | 品詞 | 意味 | | | 補足';
   const lines = [
     '次の英単語・英語表現について、TOEIC の学習用に単語カードを作ってください。',

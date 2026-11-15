@@ -7,7 +7,8 @@
  * @typedef {object} Word
  * @property {string} en 見出し語
  * @property {string} [pos] 品詞("名" "動" "形" … 複数は "動/名"、句は "動詞句" 等)
- * @property {string} [trans] 動詞の自他("vt" / "vi" / "vt/vi")
+ * @property {string} [trans] 動詞の自他("vt" / "vi" / "vt/vi")。英語に固有の項目(core/lang.js の fields)
+ * @property {string} [reading] 読み。中国語(見本)に固有の項目(core/lang.js の fields)。英語の語は持たない
  * @property {string} [ja] 日本語の意味
  * @property {string} [ex] 英語の例文
  * @property {string} [exJa] 例文の和訳

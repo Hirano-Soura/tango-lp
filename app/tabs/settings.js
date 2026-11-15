@@ -8,6 +8,7 @@ import { countBook } from '../../core/book.js';
 import { VERSION, isPreRelease } from '../../core/version.js';
 import { RATES, rateOf } from '../../core/speech.js';
 import * as speech from '../speech.js';
+import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/book.js').Book} Book */
@@ -104,7 +105,7 @@ export function render(ctx) {
 const SAMPLE = 'I would like to confirm the itinerary for my business trip.';
 
 /**
- * 読み上げの欄。使える音声は端末内の英語の音声だけ(INV-1。Docs/24_Speech.md)。
+ * 読み上げの欄。使える音声は端末内の、単語帳の言語(app/lang.js)の音声だけ(INV-1。Docs/24_Speech.md)。
  * @param {Ctx} ctx
  * @returns {string}
  */
@@ -121,9 +122,9 @@ function speechPanel(ctx) {
     .map(([val, label]) => `<option value="${esc(val)}"${val === (chosenOk ? s.speechVoice : '') ? ' selected' : ''}>${esc(label)}</option>`).join('');
   const rateOpts = RATES.map(([r, label]) => `<option value="${r}"${r === rateOf(s.speechRate) ? ' selected' : ''}>${label}</option>`).join('');
   const note = !list.length
-    ? `この端末のブラウザには、使える英語の音声がありません${remote ? `(インターネット経由の音声が ${remote} 個ありますが、単語を外部へ送らないために使いません)` : ''}。
-      端末の設定で英語の音声を追加するか、別のブラウザで開いてください。Windows は「設定」→「時刻と言語」→「音声認識」の「音声」で英語(米国)の音声を追加できます。`
-    : remote ? `インターネット経由の英語の音声(${remote} 個)は、単語や例文を外部へ送るため一覧に出していません。この端末の中にある音声だけで読みます。` : '';
+    ? `この端末のブラウザには、使える${LANG.name}の音声がありません${remote ? `(インターネット経由の音声が ${remote} 個ありますが、単語を外部へ送らないために使いません)` : ''}。
+      端末の設定で${LANG.name}の音声を追加するか、別のブラウザで開いてください。Windows は「設定」→「時刻と言語」→「音声認識」の「音声」で${LANG.speech.addHint}の音声を追加できます。`
+    : remote ? `インターネット経由の${LANG.name}の音声(${remote} 個)は、単語や例文を外部へ送るため一覧に出していません。この端末の中にある音声だけで読みます。` : '';
   return head + `<div class="check"><input type="checkbox" id="speechAuto"${s.speechAuto ? ' checked' : ''}${list.length ? '' : ' disabled'}>
       <label for="speechAuto">問題を出したときに見出し語を自動で読み上げる</label></div>
     <p class="hint">切っていても、学習の画面の「発音」で読み上げられます。答えたあとは例文も読めます。</p>

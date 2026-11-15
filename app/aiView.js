@@ -4,6 +4,7 @@
 import { esc, actionOf, foldOpen, bindFolds } from './dom.js';
 import { aiPrompt, requestWords, transPrompt } from '../core/aiPrompt.js';
 import { needsTrans } from '../core/word.js';
+import { LANG } from './lang.js';
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
 /** @typedef {import('../core/book.js').Book} Book */
@@ -40,7 +41,7 @@ export function aiHtml(book) {
       返ってきた答えを下の「まとめて取り込む」にそのまま貼り(例文の出どころは「AI」)、確認表を経て単語帳に入れます。このアプリから AI へは何も送りません。</p>
     <div class="wordform">
       <div class="f"><label for="ai-words">頼む語(1 行に 1 つ)</label>
-        <textarea id="ai-words" rows="4" spellcheck="false" lang="en">${esc(state.words)}</textarea></div>
+        <textarea id="ai-words" rows="4" spellcheck="false" lang="${LANG.htmlLang}">${esc(state.words)}</textarea></div>
       <div class="check"><input type="checkbox" id="ai-ex"${state.examples ? ' checked' : ''}><label for="ai-ex">例文と和訳も作ってもらう</label></div>
       <div class="rowbtns"><button type="button" class="primary" data-action="ai-make">依頼文を作る</button></div>
       ${nTrans ? `<p class="hint" id="ai-trans-note">単語帳に、自他(他動詞・自動詞)の無い動詞が ${nTrans} 語あります。自他だけを AI に尋ねる依頼文も作れます。
@@ -74,11 +75,11 @@ export async function handleAiClick(ctx, e) {
     if (act === 'ai-trans') {
       prepareTrans(ctx.book);
     } else {
-      const { words, ignored } = requestWords(state.words);
-      state.prompt = aiPrompt(words, { examples: state.examples });
+      const { words, ignored } = requestWords(state.words, LANG);
+      state.prompt = aiPrompt(words, { examples: state.examples, lang: LANG });
       state.kind = 'words';
       state.message = words.length
-        ? `${words.length} 語の依頼文を作りました` + (ignored.length ? `(英語でない行を除きました: ${ignored.join('、')})` : '')
+        ? `${words.length} 語の依頼文を作りました` + (ignored.length ? `(${LANG.name}でない行を除きました: ${ignored.join('、')})` : '')
         : '頼む語を 1 行に 1 つ書いてください';
     }
     // この欄だけを描き直す(タブ全体を描き直すと、1 語の追加欄に入力中の値が消える)

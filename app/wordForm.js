@@ -2,6 +2,7 @@
 
 import { esc, field, splitTags } from './dom.js';
 import { isPhrase, TRANS_VALUES, TRANS_LABEL, KIND_NAMES } from '../core/word.js';
+import { LANG } from './lang.js';
 
 /** @typedef {import('../core/word.js').Word} Word */
 /** @typedef {import('../core/book.js').WordInput} WordInput */
@@ -24,7 +25,7 @@ export function wordFields(w = {}, prefix = 'w') {
   const id = (/** @type {string} */ name) => `${prefix}-${name}`;
   const lab = (/** @type {string} */ name, /** @type {string} */ text) => `<label for="${id(name)}">${text}</label>`;
   return `
-    <div class="f">${lab('en', '見出し語(英語)')}<input id="${id('en')}" name="en" required autocomplete="off" autocapitalize="off" spellcheck="false" value="${v('en')}"></div>
+    <div class="f">${lab('en', `見出し語(${LANG.name})`)}<input id="${id('en')}" name="en" required autocomplete="off" autocapitalize="off" spellcheck="false" value="${v('en')}"></div>
     <div class="two">
       <div class="f">${lab('pos', '品詞')}<input id="${id('pos')}" name="pos" list="pos-hints" autocomplete="off" value="${v('pos')}" placeholder="名 / 動 / 形 …"></div>
       <div class="f">${lab('trans', '自他')}<select id="${id('trans')}" name="trans">
@@ -34,7 +35,7 @@ export function wordFields(w = {}, prefix = 'w') {
     <p class="hint">動詞は「自他」を選びます。品詞に「動(他)」「動(自)」「動(自他)」と書いても同じです。</p>
     <datalist id="pos-hints">${POS_HINTS.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
     <div class="f">${lab('ja', '意味')}<input id="${id('ja')}" name="ja" autocomplete="off" value="${v('ja')}"></div>
-    <div class="f">${lab('ex', '例文')}<textarea id="${id('ex')}" name="ex" rows="2" lang="en">${v('ex')}</textarea></div>
+    <div class="f">${lab('ex', '例文')}<textarea id="${id('ex')}" name="ex" rows="2" lang="${LANG.htmlLang}">${v('ex')}</textarea></div>
     <div class="f">${lab('exJa', '例文の和訳')}<textarea id="${id('exJa')}" name="exJa" rows="2">${v('exJa')}</textarea></div>
     <p class="hint">例文を消すと、和訳と例文の出どころも消えます。</p>
     <div class="f">${lab('note', '補足')}<input id="${id('note')}" name="note" autocomplete="off" value="${v('note')}"></div>

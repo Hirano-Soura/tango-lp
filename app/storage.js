@@ -5,6 +5,7 @@
 
 import { toBackup, readBackup } from '../core/backup.js';
 import { emptyBook } from '../core/book.js';
+import { LANG } from './lang.js';
 
 /** @typedef {import('../core/book.js').Book} Book */
 
@@ -12,8 +13,9 @@ import { emptyBook } from '../core/book.js';
  * データベース名。新LP版(tango-lp)は授業版(tango-drill)と同じ hirano-soura.github.io に置くため、名前を変えて単語帳を分ける
  * (IndexedDB はオリジンで分かれ、パスでは分かれない。Docs/22_Storage.md §1・UPSTREAM.md)。
  * 授業版の名前 UPSTREAM_DB_NAME へ戻すと、同じブラウザで授業版と同じ単語帳を読み書きする(tests/app/storage.test.js が落とす)。
+ * 名前の正は言語の設定(core/lang.js の dbName)。画面の言語(app/lang.js。第3段では英語だけ)の名前を使う。言語ごとに開き分けるのは第4b段。
  */
-export const DB_NAME = 'tango-lp';
+export const DB_NAME = LANG.dbName;
 /** 授業版のデータベース名(検査で「戻っていない」ことを確かめるためだけに使う) */
 export const UPSTREAM_DB_NAME = 'tango-drill';
 const DB_VERSION = 1;
