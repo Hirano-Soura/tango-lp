@@ -1,0 +1,10 @@
+```
+Hund | 名 | der | Hunde | 犬 | Der Hund schläft im Garten. | その犬は庭で眠っている。 |
+See | 名 | der | Seen | 湖 | Im Sommer schwimmen wir im See. | 夏には私たちは湖で泳ぐ。 | die See(女性)は「海」
+fahren | 動(自) | | fährt, fuhr, ist gefahren | (乗り物で)行く | Wir fahren morgen nach München. | 私たちは明日ミュンヘンへ行く。 | 4格をとると「運転する」(hat gefahren)
+ankommen | 動(自) | | kommt an, kam an, ist angekommen | 到着する | Der Zug kommt um acht Uhr in Berlin an. | 列車は8時にベルリンに到着する。 | in + 3格 ankommen
+sich freuen | 動(自) | | freut sich, freute sich, hat sich gefreut | 喜ぶ、楽しみにする | Ich freue mich auf die Ferien. | 私は休暇を楽しみにしている。 | auf + 4格 sich freuen(楽しみにする)、über + 4格 sich freuen(喜ぶ)
+groß | 形 | | größer, am größten | 大きい、背が高い | Mein Bruder ist sehr groß. | 私の兄はとても背が高い。 |
+Eltern | 名 | pl | - | 両親 | Meine Eltern wohnen in Hamburg. | 私の両親はハンブルクに住んでいる。 |
+warten | 動(自) | | wartet, wartete, hat gewartet | 待つ | Ich warte auf den Bus. | 私はバスを待っている。 | auf + 4格 warten
+```

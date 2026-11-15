@@ -14,7 +14,7 @@ import { ALL_LANG_FIELDS } from './lang.js';
  * 言語に固有の項目(core/lang.js の fields)も同じに扱う。英語の語は trans しか持たないので、英語の確認表は授業版と変わらない。
  * 型の上の項目名は core/word.js の Word に合わせる(言語を足して項目が増えたら、ここの型と Word の両方に足す)。
  */
-const FIELDS = /** @type {readonly ('pos' | 'trans' | 'ja' | 'note' | 'kind' | 'reading')[]} */ (
+const FIELDS = /** @type {readonly ('pos' | 'trans' | 'ja' | 'note' | 'kind' | 'reading' | 'gender' | 'case' | 'plural' | 'pres3' | 'past' | 'aux' | 'pp' | 'comp' | 'sup')[]} */ (
   [...new Set(['pos', 'trans', 'ja', 'note', 'kind', ...ALL_LANG_FIELDS])]);
 
 /**

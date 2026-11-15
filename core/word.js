@@ -9,6 +9,15 @@
  * @property {string} [pos] 品詞("名" "動" "形" … 複数は "動/名"、句は "動詞句" 等)
  * @property {string} [trans] 動詞の自他("vt" / "vi" / "vt/vi")。英語に固有の項目(core/lang.js の fields)
  * @property {string} [reading] 読み。中国語(見本)に固有の項目(core/lang.js の fields)。英語の語は持たない
+ * @property {string} [gender] 性("m" / "f" / "n" / "pl")。ドイツ語の名詞。**語の鍵に入る**(keyOf)。以下ドイツ語に固有の項目(core/inflection.js)
+ * @property {string} [case] 動詞の格支配("4格" / "3格" / "3格4格" / "2格" / "自")
+ * @property {string} [plural] 名詞の複数形(冠詞なし。複数形の無い名詞は "-")
+ * @property {string} [pres3] 動詞の 3 人称単数現在
+ * @property {string} [past] 動詞の過去基本形
+ * @property {string} [aux] 完了の助動詞("haben" / "sein" / "haben/sein")
+ * @property {string} [pp] 過去分詞
+ * @property {string} [comp] 形容詞の比較級
+ * @property {string} [sup] 形容詞の最上級("am größten")
  * @property {string} [ja] 日本語の意味
  * @property {string} [ex] 英語の例文
  * @property {string} [exJa] 例文の和訳
@@ -70,11 +79,13 @@ export function normPos(w) {
 /**
  * 語の同一性の鍵(INV-4)。同じ綴りで品詞の違う語(secure 形/動)を別の語として扱う。
  * 表示・履歴・重複除去のすべてをこの鍵で揃える。
- * @param {Pick<Word, 'en' | 'pos'>} w
+ * 性のある語(ドイツ語の名詞)は性も鍵に入れる(der See と die See を別の語にする)。性の無い語(英語のすべての語)の鍵は授業版と同じ。
+ * @param {Pick<Word, 'en' | 'pos' | 'gender'>} w
  * @returns {string}
  */
 export function keyOf(w) {
-  return w.en + '|' + normPos(w);
+  const k = w.en + '|' + normPos(w);
+  return w.gender ? k + '|' + w.gender : k;
 }
 
 /**

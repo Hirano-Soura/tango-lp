@@ -196,6 +196,7 @@ function rawKey(item) {
   return keyOf({
     en: typeof item.en === 'string' ? item.en : '',
     pos: typeof item.pos === 'string' ? item.pos : undefined,
+    gender: typeof item.gender === 'string' ? item.gender : undefined,
   });
 }
 

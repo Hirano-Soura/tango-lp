@@ -2,7 +2,7 @@
 // 返答は利用者が追加タブの「まとめて取り込む」に貼り、確認表を経て入れる(INV-2)。送信はしない(INV-1)。
 // 依頼文は簡易形式 simple/v1(Docs/20_ImportFormat.md §3)で答えさせる。規則は Docs/20_ImportFormat.md §6。
 
-import { DEFAULT_LANG } from './lang.js';
+import { DEFAULT_LANG, LANGS } from './lang.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./lang.js').LangSpec} LangSpec */
@@ -20,7 +20,7 @@ export const AI_PROMPT_VERSION = 'v2';
  * 過去の版の作り手は残さない(返答の見本だけを貼られうる入力として残す)。
  * @type {Readonly<Record<string, (words: readonly string[], examples: boolean) => string>>}
  */
-export const PROMPTS = Object.freeze({ [AI_PROMPT_VERSION]: promptV2 });
+export const PROMPTS = Object.freeze({ [AI_PROMPT_VERSION]: promptV2, 'de/v1': promptDeV1 });
 
 /**
  * @typedef {object} AiPromptOptions
@@ -92,6 +92,50 @@ function promptV2(words, examples) {
   }
   lines.push(
     '- 補足: よく使う形・類義語など。自動詞は、続ける前置詞(dispose of など)も書きます。無ければ空欄にしてください。',
+    '',
+    '【語の一覧】',
+    ...words,
+  );
+  return lines.join('\n');
+}
+
+/**
+ * ドイツ語の依頼文 de/v1(新LP版。学習ポータル 改善計画 項目37「AI への依頼文(ドイツ語)」が草案。全文は tests/core/fixtures/ai/prompt_de_v1*.txt)。
+ * 列の並びはドイツ語の設定の columns から作る(取り込みの列と食い違わないように)。
+ * @param {readonly string[]} words
+ * @param {boolean} examples
+ * @returns {string}
+ */
+function promptDeV1(words, examples) {
+  const labels = LANGS.de.columns.map((c) => (!examples && (c.field === 'ex' || c.field === 'exJa') ? '' : c.label));
+  // 空欄にさせる列は名前を書かず、区切りだけを残す(英語の v2 の「見出し語 | 品詞 | 意味 | | | 補足」と同じ書き方)
+  const cols = labels.join(' | ').replace(/ {2,}/g, ' ');
+  const lines = [
+    '次のドイツ語の単語・表現について、ドイツ語学習(初級〜中級)用の単語カードを作ってください。',
+    '',
+    '【答え方】',
+    '- 全体を 1 つのコードブロック(```)に入れてください。コードブロックの外には何も書かないでください。',
+    `- 1 行に 1 語。各行は「${cols}」の順に、半角の縦棒「|」で区切ってください。`,
+    '- 見出し行・表の区切り線・番号は付けないでください。項目の中には「|」を使わないでください。',
+    '- ä ö ü ß はそのまま書いてください(ae・oe・ue・ss に置き換えないでください)。',
+    '- 見出し語: 一覧のとおりの綴りで書いてください。名詞に冠詞は付けません(冠詞は「性」に書きます)。再帰動詞は「sich freuen」のように sich を付けます。',
+    '- 品詞: 名・動・形・副・前・接・代・間 のどれか。複数なら「形/副」のように書きます。2 語以上の表現は「動詞句」「前置詞句」などと書きます。',
+    '- 動詞は、品詞の後ろに目的語の格を半角かっこで添えてください。4格の目的語をとるなら「動(4格)」、3格なら「動(3格)」、両方なら「動(3格4格)」、目的語をとらないなら「動(自)」です。',
+    '- 性: 名詞だけ書きます。der・die・das のどれか。複数形でしか使わない名詞は「pl」。名詞以外は空欄にしてください。',
+    '- 変化:',
+    '  - 名詞は、冠詞なしの複数形(例: Hunde)。複数形が無ければ「-」。',
+    '  - 動詞は「3人称単数現在, 過去基本形, 完了の助動詞 過去分詞」(例: fährt, fuhr, ist gefahren)。分離動詞は分かれた形で書きます(例: kommt an, kam an, ist angekommen)。',
+    '  - 形容詞は「比較級, 最上級」(例: größer, am größten)。比較しない語は空欄。',
+    '  - それ以外の品詞は空欄。',
+    '- 意味: 日本語で短く。意味が複数あれば「、」で区切ります。品詞が複数ある語は「(形)速い ／ (副)速く」のように「 ／ 」で分け、それぞれの頭に品詞を半角かっこで付けます。',
+  ];
+  if (examples) {
+    lines.push('- 例文: 初級〜中級の短いドイツ語の文を 1 つ。', '- 例文の和訳: 例文の日本語訳。');
+  } else {
+    lines.push('- 例文と例文の和訳は空欄にしてください(区切りの「|」は残します)。');
+  }
+  lines.push(
+    '- 補足: 前置詞との結び付き(auf + 4格 warten など)、男性弱変化名詞の 2 格(des Studenten など)、よく使う形。無ければ空欄にしてください。',
     '',
     '【語の一覧】',
     ...words,

@@ -2,8 +2,10 @@
 // 各言語は下の LANGS に「何をどう扱うか」を宣言する。消費側(取り込み・依頼文・読み上げ・画面)は
 // 渡された設定の項目を引くだけにし、言語の ID を見て分岐しない(LC-2)。言語を足すときは、ここに 1 つ足す。
 // 英語の宣言は授業版(tango-drill)の挙動と同じにする(UPSTREAM.md の取り込みの規則)。
-// 中国語は実装しない。宣言の形が英語専用になっていないことを検査で確かめるための最小の見本(tests/core/lang.test.js)。
+// ドイツ語は第4a段(データ)・第4b段(画面)で足した。中国語は実装しない。宣言の形が英語専用になっていないことを確かめるための最小の見本。
 
+/** ラテン文字(ウムラウトと ß を含む) */
+const LATIN = /[A-Za-zÄÖÜäöüß]/;
 /** かな(ひらがな・カタカナ) */
 const KANA = /[぀-ヿ]/;
 /** かな・漢字・全角記号(英語の見出し語に入らない文字) */
@@ -13,9 +15,11 @@ const HAN = /[㐀-鿿]/;
 
 /**
  * 簡易形式の 1 列。field は語の項目名(core/word.js の Word)。
+ * virtual の列は語の項目ではなく、取り込みで内部の項目へ分ける(ドイツ語の「変化」→ plural など。core/inflection.js の readForms)。
  * @typedef {object} Column
  * @property {string} field
  * @property {string} label 依頼文・取り込みの説明に出す名前
+ * @property {boolean} [virtual]
  */
 
 /**
@@ -32,6 +36,10 @@ const HAN = /[㐀-鿿]/;
  *   読み上げの声。prefix は使う声の言語タグの頭、regions は選ぶ順(小文字。ここに無い地域はこの後ろ)、
  *   addHint は端末に声を足すときの案内に出す名前
  * @property {string} dbName 端末内の保存先(IndexedDB)のデータベース名(app/storage.js)
+ * @property {Readonly<Record<string, string>> | null} articles 見出し語の頭に書かれたら性へ移す冠詞(冠詞 → 性)。無ければ null
+ * @property {boolean} selectable 画面で開ける言語か(URL の ?lang=。見本だけの言語は false)
+ * @property {{ replace: Readonly<Record<string, string>>, buttons: readonly string[] } | null} typing
+ *   入力の補助。replace は打った文字列の置き換え(「a:」→「ä」)、buttons は入力欄の下に出す文字のボタン。無ければ null
  */
 
 /** 英語の簡易形式の列(授業版の simple/v1 と同じ並び) */
@@ -62,6 +70,38 @@ export const LANGS = Object.freeze({
       addHint: '英語(米国)',
     }),
     dbName: 'tango-lp',
+    articles: null,
+    selectable: true,
+    typing: null,
+  }),
+  de: Object.freeze({
+    id: 'de',
+    name: 'ドイツ語',
+    htmlLang: 'de',
+    // ラテン文字(ä ö ü ß を含む)を含み、かな・漢字・全角文字を含まない
+    looksTerm: (/** @type {string} */ s) => !!s && LATIN.test(s) && !JAPANESE.test(s),
+    // 文法の情報は「性」と「変化」の 2 列に畳む(列が 8 を超えると AI が列をずらしやすい。改善計画 項目37「ドイツ語の欄」)
+    columns: Object.freeze([
+      { field: 'en', label: '見出し語' },
+      { field: 'pos', label: '品詞' },
+      { field: 'gender', label: '性' },
+      { field: 'forms', label: '変化', virtual: true },
+      { field: 'ja', label: '意味' },
+      { field: 'ex', label: '例文' },
+      { field: 'exJa', label: '例文の和訳' },
+      { field: 'note', label: '補足' },
+    ]),
+    fields: Object.freeze(['gender', 'case', 'plural', 'pres3', 'past', 'aux', 'pp', 'comp', 'sup']),
+    prompt: 'de/v1',
+    speech: Object.freeze({ prefix: 'de', regions: Object.freeze(['de-de', 'de-at', 'de-ch']), addHint: 'ドイツ語(ドイツ)' }),
+    dbName: 'tango-lp-de',
+    articles: Object.freeze({ der: 'm', die: 'f', das: 'n' }),
+    selectable: true,
+    // german-drill と同じ記法(a: o: u: → ä ö ü)
+    typing: Object.freeze({
+      replace: Object.freeze({ 'a:': 'ä', 'o:': 'ö', 'u:': 'ü', 'A:': 'Ä', 'O:': 'Ö', 'U:': 'Ü' }),
+      buttons: Object.freeze(['ä', 'ö', 'ü', 'ß']),
+    }),
   }),
   zh: Object.freeze({
     id: 'zh',
@@ -82,6 +122,9 @@ export const LANGS = Object.freeze({
     prompt: null,
     speech: Object.freeze({ prefix: 'zh', regions: Object.freeze(['zh-cn']), addHint: '中国語(簡体字、中国)' }),
     dbName: 'tango-lp-zh',
+    articles: null,
+    selectable: false,
+    typing: null,
   }),
 });
 

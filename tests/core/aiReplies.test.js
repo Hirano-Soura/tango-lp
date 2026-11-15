@@ -8,8 +8,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseImport } from '../../core/importFormat.js';
 import { planImport } from '../../core/importPlan.js';
-import { AI_PROMPT_VERSION } from '../../core/aiPrompt.js';
-import { isVerb } from '../../core/word.js';
+import { isVerb, posParts } from '../../core/word.js';
+import { LANGS, langOf } from '../../core/lang.js';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'ai');
 
@@ -24,6 +24,7 @@ const dir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'ai');
  * @property {string} promptVersion どの版の依頼文への返答か
  * @property {boolean} examples 例文も頼んだか
  * @property {string[]} words 頼んだ語
+ * @property {string} [lang] 語の言語(core/lang.js の ID。無ければ英語)。新LP版でドイツ語を足した
  */
 
 /** @type {ReplyEntry[]} */
@@ -35,7 +36,9 @@ const REQUIRED = ['ChatGPT', 'Claude', 'Gemini'];
 for (const e of REPLIES) {
   test(`${e.provider}(${e.model}・${e.via})の返答を、頼んだ語だけの確認表にできる: ${e.file}`, () => {
     const text = readFileSync(join(dir, e.file), 'utf8');
-    const parsed = parseImport(text);
+    const lang = langOf(e.lang ?? 'en');
+    assert.ok(lang, `知らない言語 ${e.lang}`);
+    const parsed = parseImport(text, lang);
     assert.equal(parsed.fatal, undefined);
     const plan = planImport([], parsed, { exSrc: 'ai' });
     assert.deepEqual(plan.rows.filter((r) => r.action === 'error').map((r) => r.raw), [], '読めない行');
@@ -49,8 +52,12 @@ for (const e of REPLIES) {
         assert.ok(w.ex && w.exJa, `${w.en}: 例文か和訳が無い`);
         assert.equal(w.exSrc, 'ai');
       }
-      // v2 からの依頼文は、動詞の品詞に自他を添えさせる(読み手は splitTransMark)
-      if (e.promptVersion !== 'v1' && isVerb(w)) assert.ok(w.trans, `${w.en}: 自他が無い`);
+      // v2 からの依頼文は、動詞の品詞に自他を添えさせる(読み手は splitTransMark)。自他を持つ言語(英語)だけ
+      if (e.promptVersion !== 'v1' && lang.fields.includes('trans') && isVerb(w)) assert.ok(w.trans, `${w.en}: 自他が無い`);
+      // ドイツ語の依頼文は、名詞に性、動詞に格支配と三基本形を書かせる(どれを確かめるかは言語の設定の fields で決まる)
+      if (lang.fields.includes('gender') && posParts(w).includes('名')) assert.ok(w.gender, `${w.en}: 性が無い`);
+      if (lang.fields.includes('case') && isVerb(w)) assert.ok(w.case, `${w.en}: 格支配が無い`);
+      if (lang.fields.includes('pp') && isVerb(w)) assert.ok(w.pres3 && w.past && w.aux && w.pp, `${w.en}: 三基本形が無い`);
     }
   });
 }
@@ -60,13 +67,16 @@ test('台帳の行は実在する見本と、固定した全文のある依頼�
     assert.ok(REQUIRED.includes(e.provider), e.provider);
     assert.ok(readFileSync(join(dir, e.file), 'utf8').length > 0, e.file);
     // 過去の版への返答も、読めることを確かめる見本として残す(貼られうる入力のため。INV-3 と同じ考え)
-    assert.ok(existsSync(join(dir, `prompt_${e.promptVersion}.txt`)), `${e.file} の依頼文の版 ${e.promptVersion} の全文が無い`);
+    assert.ok(existsSync(join(dir, `prompt_${e.promptVersion.replace('/', '_')}.txt`)), `${e.file} の依頼文の版 ${e.promptVersion} の全文が無い`);
   }
 });
 
-// 今の版の依頼文への本物の見本(代用でないもの)の無い提供元は todo として出す(通ったように見せない。UV-1)
-for (const p of REQUIRED.filter((x) => !REPLIES.some((e) => e.provider === x && !e.standIn && e.promptVersion === AI_PROMPT_VERSION))) {
-  test(`${p} の、今の依頼文(${AI_PROMPT_VERSION})への実際の返答の見本がまだ無い`, { todo: '見本を採って fixtures/ai/replies.json に足す' }, () => {
-    assert.fail(`${p} の見本が無い`);
-  });
+// 今の版の依頼文への本物の見本(代用でないもの)の無い提供元は todo として出す(通ったように見せない。UV-1)。
+// 依頼文を持つ言語ごとに(英語は v2、ドイツ語は de/v1)
+for (const ver of Object.values(LANGS).flatMap((l) => (l.prompt ? [l.prompt] : []))) {
+  for (const p of REQUIRED.filter((x) => !REPLIES.some((e) => e.provider === x && !e.standIn && e.promptVersion === ver))) {
+    test(`${p} の、今の依頼文(${ver})への実際の返答の見本がまだ無い`, { todo: '見本を採って fixtures/ai/replies.json に足す' }, () => {
+      assert.fail(`${p} の見本が無い`);
+    });
+  }
 }

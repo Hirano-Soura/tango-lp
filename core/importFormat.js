@@ -3,6 +3,7 @@
 
 import { TRANS_VALUES, POS_CODE_OF_NAME } from './word.js';
 import { DEFAULT_LANG, LANGS } from './lang.js';
+import { readGender, readCase, readAux, readForms, splitArticle, splitCaseMark } from './inflection.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./lang.js').LangSpec} LangSpec */
@@ -222,7 +223,8 @@ function unknownKeys(data, known) {
 export function readItem(item, ref, lang = DEFAULT_LANG) {
   const raw = JSON.stringify(item) ?? String(item);
   if (!isObject(item)) return { ref, raw, error: '語が { } ではありません', warnings: [] };
-  const extra = lang.fields.filter((k) => !WORD_KEYS.includes(k));
+  // 言語に固有の項目と、取り込みで内部の項目へ分ける列(ドイツ語の forms)
+  const extra = [...new Set([...lang.fields, ...lang.columns.map((c) => c.field)])].filter((k) => !WORD_KEYS.includes(k));
   const warnings = unknownKeys(item, [...WORD_KEYS, ...extra, TERM_ALIAS]);
   const term = typeof item.en === 'string' ? item.en : item.en === undefined ? item[TERM_ALIAS] : undefined;
   if (typeof term !== 'string') return { ref, raw, error: '見出し語(en)がありません', warnings };
@@ -352,7 +354,9 @@ function buildRow(fields, tags, ref, raw, warnings, lang) {
   const hasTrans = lang.fields.includes('trans');
   // 品詞に添えた自他の印(「動(他)」「他動詞」など。簡易形式で自他を書く唯一の場所)は trans に移す
   const marked = hasTrans ? splitTransMark(pick('pos')) : { pos: pick('pos') };
-  if (marked.pos) word.pos = normalizePos(marked.pos);
+  // 格支配(case)も同じく、宣言した言語だけが品詞の括弧から読む(ドイツ語の「動(4格)」)
+  const caseMarked = lang.fields.includes('case') ? splitCaseMark(marked.pos) : { pos: marked.pos };
+  if (caseMarked.pos) word.pos = normalizePos(caseMarked.pos);
   for (const k of /** @type {const} */ (['ja', 'ex', 'exJa', 'note'])) {
     const v = pick(k);
     if (v) word[k] = v;
@@ -379,6 +383,7 @@ function buildRow(fields, tags, ref, raw, warnings, lang) {
     warnings.push(`品詞に添えた自他(${marked.trans})は trans の値 ${given} と食い違うため、trans の値を使いました`);
   }
   if (given || marked.trans) word.trans = given || marked.trans;
+  readInflection(word, own, pick('forms'), caseMarked.case, lang, warnings);
   if (word.exJa && !word.ex) {
     warnings.push('例文の無い和訳(exJa)は無視しました');
     delete word.exJa;
@@ -396,6 +401,63 @@ function buildRow(fields, tags, ref, raw, warnings, lang) {
   const cleanTags = [...new Set((tags || []).map((t) => t.trim()).filter(Boolean))];
   if (cleanTags.length) word.tags = cleanTags;
   return { ref, raw, word, warnings };
+}
+
+/**
+ * 性・格支配・変化を読みそろえる(ドイツ語。どの項目を読むかは言語の設定の fields・articles・columns で決まる)。
+ * 読めない値は捨てて warnings に残す(1 項目のために語ごと落とさない)。
+ * @param {Word} word 読んでいる語(見出し語の冠詞を性へ移すときに en を書き換える)
+ * @param {Record<string, string>} own word を項目名で引くための同じオブジェクト
+ * @param {string} forms 「変化」の欄(無ければ空)
+ * @param {string | undefined} marked 品詞の括弧から読んだ格支配
+ * @param {LangSpec} lang
+ * @param {string[]} warnings
+ */
+function readInflection(word, own, forms, marked, lang, warnings) {
+  const has = (/** @type {string} */ k) => lang.fields.includes(k);
+  if (has('gender') && own.gender) {
+    const g = readGender(own.gender);
+    if (g) own.gender = g;
+    else {
+      warnings.push(`性の値 ${own.gender} は使えないため無視しました(der / die / das / pl)`);
+      delete own.gender;
+    }
+  }
+  if (lang.articles) {
+    const a = splitArticle(word.en, lang.articles);
+    if (a.gender) {
+      word.en = a.term;
+      if (!own.gender) own.gender = a.gender;
+      else if (own.gender !== a.gender) warnings.push(`見出し語の冠詞と性(${own.gender})が食い違うため、性の欄を使いました`);
+    }
+  }
+  if (has('case')) {
+    if (own.case) {
+      const c = readCase(own.case);
+      if (c) own.case = c;
+      else {
+        warnings.push(`格支配の値 ${own.case} は使えないため無視しました(4格 / 3格 / 3格4格 / 2格 / 自)`);
+        delete own.case;
+      }
+    }
+    if (marked && own.case && marked !== own.case) {
+      warnings.push(`品詞に添えた格支配(${marked})は case の値 ${own.case} と食い違うため、case の値を使いました`);
+    } else if (marked) own.case = marked;
+  }
+  if (forms && lang.columns.some((c) => c.field === 'forms')) {
+    const noun = String(word.pos ?? '').split(/[\/・,、]/).some((p) => p.replace(/[（(][^）)]*[）)]/g, '').trim() === '名') || !!own.gender;
+    const r = readForms(forms, { noun });
+    if (r.warning) warnings.push(r.warning);
+    for (const [k, v] of Object.entries(r.fields)) if (has(k) && !own[k]) own[k] = v;
+  }
+  if (has('aux') && own.aux) {
+    const x = readAux(own.aux);
+    if (x) own.aux = x;
+    else {
+      warnings.push(`完了の助動詞 ${own.aux} は使えないため無視しました(haben / sein)`);
+      delete own.aux;
+    }
+  }
 }
 
 /** 品詞に括弧で添えた自他の印(括弧の中身から空白を除き、小文字にしたもの)→ trans */
