@@ -8,7 +8,7 @@ import { countBook } from '../../core/book.js';
 import { VERSION, isPreRelease } from '../../core/version.js';
 import { RATES, rateOf } from '../../core/speech.js';
 import * as speech from '../speech.js';
-import { LANG } from '../lang.js';
+import { LANG, IS_DEFAULT } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/book.js').Book} Book */
@@ -61,7 +61,7 @@ export function render(ctx) {
     const f = file.files?.[0];
     if (!f) return;
     // 読むだけで、保存はしない。置き換えるのは確認のあと
-    const r = parseBackup(await f.text(), { today: ctx.today });
+    const r = parseBackup(await f.text(), { today: ctx.today, lang: LANG });
     if (r.fatal !== undefined || !r.book) {
       pending = null;
       message = `「${f.name}」は読み込めません: ${r.fatal}`;
@@ -79,7 +79,8 @@ export function render(ctx) {
     const act = actionOf(e)?.dataset.action;
     if (act === 'export') {
       const c = countBook(ctx.book);
-      download(`tango-drill_backup_${ctx.today}.json`, backupText(ctx.book, new Date().toISOString()), 'application/json');
+      // 英語(既定)以外は、ファイル名に言語を入れる(どの単語帳のバックアップか見分けられるように)
+      download(`tango-drill_backup_${IS_DEFAULT ? '' : LANG.id + '_'}${ctx.today}.json`, backupText(ctx.book, new Date().toISOString(), LANG), 'application/json');
       message = `書き出しました(語数 ${c.words}・記録件数 ${c.answers}・印 ${c.starred})`;
       isError = false;
       ctx.rerender();

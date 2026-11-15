@@ -7,10 +7,12 @@ import { keyOf } from './word.js';
 import { readItem, BACKUP_FORMAT_PREFIX } from './importFormat.js';
 import { REVIEW, emptyRecords } from './review.js';
 import { moveKeys, duplicateKeys } from './book.js';
+import { DEFAULT_LANG, langOf } from './lang.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./book.js').Book} Book */
 /** @typedef {import('./book.js').Rekey} Rekey */
+/** @typedef {import('./lang.js').LangSpec} LangSpec */
 
 /** 書き出すときに使うバックアップの版 */
 export const CURRENT_BACKUP_FORMAT = BACKUP_FORMAT_PREFIX + 'v2';
@@ -18,6 +20,7 @@ export const CURRENT_BACKUP_FORMAT = BACKUP_FORMAT_PREFIX + 'v2';
 /**
  * @typedef {object} ReadOptions
  * @property {string} today 追加日の無い語に付ける日(YYYY-MM-DD)
+ * @property {LangSpec} [lang] 読み込む先の単語帳の言語(既定: 英語)。ファイルの言語(lang 欄。無ければ英語)と違えば読まない(新LP版)
  */
 
 /**
@@ -43,22 +46,25 @@ export const READABLE_BACKUP_FORMATS = Object.freeze(Object.keys(READERS));
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** 最後の回答日時の形(Date#toISOString の UTC 表記)。文字列の大小で前後を比べるので、この形だけを読む */
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-const TOP_KEYS = ['format', 'exportedAt', 'words', 'added', 'records', 'starred'];
+const TOP_KEYS = ['format', 'lang', 'exportedAt', 'words', 'added', 'records', 'starred'];
 
 /**
  * 単語帳をバックアップの形(JSON にできるオブジェクト)にする。渡した Book は変えない。
  * 追加日は単語帳にある語の分だけを書く。記録は消した語の分も書く。
+ * 英語(既定)以外の単語帳は、言語の ID を lang 欄に書く(新LP版。英語の書き出しは授業版と同じ形のまま)。
  * @param {Book} book
  * @param {string} exportedAt 書き出した日時(ISO 8601)
+ * @param {LangSpec} [lang] 単語帳の言語(既定: 英語)
  * @returns {Record<string, unknown>}
  */
-export function toBackup(book, exportedAt) {
+export function toBackup(book, exportedAt, lang = DEFAULT_LANG) {
   const keys = new Set(book.words.map(keyOf));
   /** @type {Record<string, string>} */
   const added = {};
   for (const k of keys) if (book.added[k] !== undefined) added[k] = book.added[k];
   return {
     format: CURRENT_BACKUP_FORMAT,
+    ...(lang === DEFAULT_LANG ? {} : { lang: lang.id }),
     exportedAt,
     words: book.words.map((w) => (w.tags ? { ...w, tags: [...w.tags] } : { ...w })),
     added,
@@ -75,10 +81,11 @@ export function toBackup(book, exportedAt) {
  * バックアップのファイルの中身(文字列)。
  * @param {Book} book
  * @param {string} exportedAt
+ * @param {LangSpec} [lang] 単語帳の言語(既定: 英語)
  * @returns {string}
  */
-export function backupText(book, exportedAt) {
-  return JSON.stringify(toBackup(book, exportedAt), null, 2) + '\n';
+export function backupText(book, exportedAt, lang = DEFAULT_LANG) {
+  return JSON.stringify(toBackup(book, exportedAt, lang), null, 2) + '\n';
 }
 
 /**
@@ -140,6 +147,14 @@ function readBook(format, data, opts, withLast) {
   const warnings = Object.keys(data).filter((k) => !TOP_KEYS.includes(k)).map((k) => `未知の項目 ${k} を無視しました`);
 
   let exportedAt;
+  // 言語: 別の言語の単語帳のファイルは読まない(語の読み方も鍵も違うため。lang 欄が無ければ英語)
+  const lang = opts.lang ?? DEFAULT_LANG;
+  const fileLang = data.lang === undefined ? DEFAULT_LANG.id : data.lang;
+  if (fileLang !== lang.id) {
+    const named = typeof fileLang === 'string' ? langOf(fileLang)?.name ?? fileLang : String(fileLang);
+    return fatal(format, `このファイルは${named}の単語帳のバックアップです。${lang.name}の単語帳には読み込めません`);
+  }
+
   if (typeof data.exportedAt === 'string' && !Number.isNaN(Date.parse(data.exportedAt))) exportedAt = data.exportedAt;
   else if (data.exportedAt !== undefined) warnings.push('書き出した日時(exportedAt)が読めません');
 
@@ -151,7 +166,7 @@ function readBook(format, data, opts, withLast) {
   /** @type {Rekey[]} */
   const rekeys = [];
   for (const [i, item] of data.words.entries()) {
-    const row = readItem(item, i + 1);
+    const row = readItem(item, i + 1, lang);
     if (!row.word) return fatal(format, `${i + 1} 番の語が読めません: ${row.error ?? row.skipped}`);
     for (const w of row.warnings) warnings.push(`${i + 1} 番の語: ${w}`);
     const before = isObject(item) ? rawKey(item) : '';

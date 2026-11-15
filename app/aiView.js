@@ -34,14 +34,15 @@ export function prepareTrans(book) {
  * @returns {string}
  */
 export function aiHtml(book) {
-  const nTrans = book.words.filter(needsTrans).length;
+  // 自他を補う依頼文は、自他を持つ言語(英語)だけ
+  const nTrans = LANG.fields.includes('trans') ? book.words.filter(needsTrans).length : 0;
   return `${foldOpen('ai-panel')}
     <summary><h2>AI に頼む</h2></summary>
     <p class="hint">覚えたい語を 1 行に 1 つ書いて依頼文を作り、ChatGPT・Claude・Gemini などに貼ってください。
       返ってきた答えを下の「まとめて取り込む」にそのまま貼り(例文の出どころは「AI」)、確認表を経て単語帳に入れます。このアプリから AI へは何も送りません。</p>
     <div class="wordform">
       <div class="f"><label for="ai-words">頼む語(1 行に 1 つ)</label>
-        <textarea id="ai-words" rows="4" spellcheck="false" lang="${LANG.htmlLang}">${esc(state.words)}</textarea></div>
+        <textarea id="ai-words" rows="4" spellcheck="false" lang="${LANG.htmlLang}"${LANG.typing ? ' data-typing' : ''}>${esc(state.words)}</textarea></div>
       <div class="check"><input type="checkbox" id="ai-ex"${state.examples ? ' checked' : ''}><label for="ai-ex">例文と和訳も作ってもらう</label></div>
       <div class="rowbtns"><button type="button" class="primary" data-action="ai-make">依頼文を作る</button></div>
       ${nTrans ? `<p class="hint" id="ai-trans-note">単語帳に、自他(他動詞・自動詞)の無い動詞が ${nTrans} 語あります。自他だけを AI に尋ねる依頼文も作れます。

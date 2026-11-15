@@ -5,6 +5,9 @@ import { keyOf } from './word.js';
 import { emptyRecords } from './review.js';
 import { applyImport, planImport, confirmPlan } from './importPlan.js';
 import { parseImport, readItem, CURRENT_JSON_FORMAT } from './importFormat.js';
+import { DEFAULT_LANG } from './lang.js';
+
+/** @typedef {import('./lang.js').LangSpec} LangSpec */
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./review.js').Records} Records */
@@ -115,6 +118,9 @@ export function importIntoBook(book, confirmedPlan, today) {
  * @property {string} [exJa]
  * @property {string} [note]
  * @property {string[]} [tags]
+ * @property {string} [gender] 性(ドイツ語の名詞。core/inflection.js)
+ * @property {string} [case] 格支配(ドイツ語の動詞)
+ * @property {string} [forms] 変化(簡易形式の「変化」の欄と同じ書き方。取り込みと同じ読み手で plural などへ分ける)
  */
 
 /**
@@ -129,11 +135,12 @@ export function importIntoBook(book, confirmedPlan, today) {
  * @param {Book} book
  * @param {WordInput} input
  * @param {string} today YYYY-MM-DD
+ * @param {LangSpec} [lang] 単語帳の言語(既定: 英語)
  * @returns {EditResult}
  */
-export function addOneWord(book, input, today) {
+export function addOneWord(book, input, today, lang = DEFAULT_LANG) {
   const text = JSON.stringify({ format: CURRENT_JSON_FORMAT, words: [clean(input)] });
-  const plan = planImport(book.words, parseImport(text), { exSrc: 'self' });
+  const plan = planImport(book.words, parseImport(text, lang), { exSrc: 'self' });
   const row = plan.rows[0];
   if (plan.fatal !== undefined || !row) return { ok: false, error: plan.fatal ?? '入力が読めません' };
   if (row.action === 'error') return { ok: false, error: row.message ?? '入力が読めません' };
@@ -154,9 +161,10 @@ export function addOneWord(book, input, today) {
  * @param {Book} book
  * @param {string} key 書き換える語の鍵
  * @param {WordInput} input
+ * @param {LangSpec} [lang] 単語帳の言語(既定: 英語)
  * @returns {EditResult}
  */
-export function editWord(book, key, input) {
+export function editWord(book, key, input, lang = DEFAULT_LANG) {
   const i = book.words.findIndex((w) => keyOf(w) === key);
   if (i < 0) return { ok: false, error: `${key} は単語帳にありません` };
   const old = book.words[i];
@@ -172,7 +180,7 @@ export function editWord(book, key, input) {
     item.exSrc = item.ex === old.ex && old.exSrc ? old.exSrc : 'self';
   }
   if (old.kind === 'phrase') item.kind = 'phrase';
-  const row = readItem(item, 1);
+  const row = readItem(item, 1, lang);
   if (!row.word) return { ok: false, error: row.error ?? row.skipped ?? '入力が読めません' };
   const next = row.word;
   const to = keyOf(next);

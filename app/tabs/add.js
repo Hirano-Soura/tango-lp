@@ -3,9 +3,9 @@
 // 確認表の規則は Docs/20_ImportFormat.md §4、画面の規則は Docs/23_Screens.md §3。
 
 import { esc, actionOf, splitTags, foldOpen, bindFolds } from '../dom.js';
-import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
+import { wordFields, readWordFields, posLine, jaHtml, headHtml, bindTyping } from '../wordForm.js';
 import { addOneWord, importIntoBook } from '../../core/book.js';
-import { parseImport, SIMPLE_EXAMPLE } from '../../core/importFormat.js';
+import { parseImport } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
 import { aiHtml, bindAi, handleAiClick } from '../aiView.js';
 import { LANG } from '../lang.js';
@@ -45,6 +45,8 @@ const ACTION_LABEL = /** @type {Record<PlanRow['action'], string>} */ ({
 /** 項目名の表示名 */
 const FIELD_LABEL = /** @type {Record<string, string>} */ ({
   pos: '品詞', trans: '自他', ja: '意味', ex: '例文', exJa: '例文の和訳', note: '補足', kind: '種別', tags: 'タグ',
+  gender: '性', case: '格支配', plural: '複数形', pres3: '3人称単数現在', past: '過去基本形', aux: '完了の助動詞', pp: '過去分詞',
+  comp: '比較級', sup: '最上級', reading: '読み',
 });
 
 /** @param {Ctx} ctx */
@@ -62,10 +64,10 @@ export function render(ctx) {
     ${foldOpen('import-panel')}
       <summary><h2>まとめて取り込む</h2></summary>
       <p class="hint">AI の返答や表計算からのコピーを貼り付けるか、ファイルを選びます。
-        1 行 1 語で「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」の順。動詞の自他は品詞に「動(他)」「動(自)」「動(自他)」と添えます。
+        1 行 1 語で「${LANG.columns.map((c) => c.label).join(' | ')}」の順。${importHint()}
         確認表で中身を確かめてから単語帳に入れます。</p>
       <div class="wordform">
-        <div class="f"><label for="imp-text">貼り付ける内容</label><textarea id="imp-text" rows="6" spellcheck="false" placeholder="${esc(SIMPLE_EXAMPLE)}">${esc(pasted)}</textarea></div>
+        <div class="f"><label for="imp-text">貼り付ける内容</label><textarea id="imp-text" rows="6" spellcheck="false" placeholder="${esc(LANG.example)}">${esc(pasted)}</textarea></div>
         <div class="f"><label for="imp-file">ファイルから読む</label><input type="file" id="imp-file" accept=".txt,.json,.tsv,.md,text/plain,application/json"></div>
         <div class="two">
           <div class="f"><label for="imp-tags">全部の語に付けるタグ(読点・カンマ区切り)</label><input id="imp-tags" autocomplete="off" value="${esc(tagText)}"></div>
@@ -80,9 +82,21 @@ export function render(ctx) {
       <p class="msg${importIsError ? ' err' : ''}" role="status" id="import-msg">${esc(importMsg)}</p>
     </details>`;
   bindFolds(ctx.root);
+  bindTyping(ctx.root);
   bindAdd(ctx);
   bindAi(ctx);
   bindImport(ctx);
+}
+
+/**
+ * 取り込みの説明の後半(品詞の括弧に添える印の書き方)。言語が宣言した項目の分だけ出す。
+ * @returns {string}
+ */
+function importHint() {
+  return [
+    LANG.fields.includes('trans') ? '動詞の自他は品詞に「動(他)」「動(自)」「動(自他)」と添えます。' : '',
+    LANG.fields.includes('case') ? '動詞の格支配は品詞に「動(4格)」「動(3格)」「動(自)」と添えます。性は der・die・das、変化は名詞なら複数形、動詞なら「fährt, fuhr, ist gefahren」です。' : '',
+  ].join('');
 }
 
 /** @param {Ctx} ctx */
@@ -90,7 +104,7 @@ function bindAdd(ctx) {
   const form = /** @type {HTMLFormElement} */ (ctx.root.querySelector('#add-form'));
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const r = addOneWord(ctx.book, readWordFields(form), ctx.today);
+    const r = addOneWord(ctx.book, readWordFields(form), ctx.today, LANG);
     if (!r.ok) {
       message = r.error;
       isError = true;
@@ -157,7 +171,7 @@ function bindImport(ctx) {
     if (await handleAiClick(ctx, e)) return;
     const act = actionOf(e)?.dataset.action;
     if (act === 'example' && !text.value) {
-      text.value = SIMPLE_EXAMPLE;
+      text.value = LANG.example;
       text.dispatchEvent(new Event('input'));
       text.focus();
     } else if (act === 'plan') {
@@ -234,7 +248,7 @@ function planHtml(p) {
 function rowHtml(row) {
   const w = row.word;
   let body = `<div><span class="act a-${row.action}">${ACTION_LABEL[row.action]}</span> `;
-  body += w ? `<span class="en" lang="${LANG.htmlLang}">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span>` : `<span class="meta">${row.ref} 行目</span>`;
+  body += w ? `<span class="en" lang="${LANG.htmlLang}">${headHtml(w)}</span> <span class="meta">${posLine(w)}</span>` : `<span class="meta">${row.ref} 行目</span>`;
   body += '</div>';
   if (w) {
     if (w.ja) body += `<div class="ja">${jaHtml(w.ja)}</div>`;

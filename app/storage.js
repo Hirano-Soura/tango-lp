@@ -45,7 +45,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
 
 /**
  * @typedef {object} StorageOptions
- * @property {string} [name] データベース名(既定: DB_NAME)
+ * @property {string} [name] データベース名(既定: 言語の設定の dbName)
+ * @property {import('../core/lang.js').LangSpec} [lang] 単語帳の言語(既定: app/lang.js の LANG)。保存する形と読み方を決める
  * @property {() => string} [now] 保存した日時(ISO 8601)を返す。既定は現在時刻
  */
 
@@ -74,13 +75,14 @@ export const DEFAULT_SETTINGS = Object.freeze({
  */
 export async function openStorage(factory, opts = {}) {
   const now = opts.now ?? (() => new Date().toISOString());
-  const db = await openDb(factory, opts.name ?? DB_NAME);
+  const lang = opts.lang ?? LANG;
+  const db = await openDb(factory, opts.name ?? lang.dbName);
 
   return {
     async load(today) {
       const raw = await get(db, BOOK);
       if (raw === undefined) return { book: emptyBook(), warnings: [] };
-      const r = readBackup(raw, { today });
+      const r = readBackup(raw, { today, lang });
       // 読めない中身を空の単語帳として扱うと、次の保存で上書きして失う。読めないことを呼ぶ側に伝える
       if (r.fatal !== undefined || !r.book) throw new Error('保存してある単語帳が読めません: ' + r.fatal);
       return { book: r.book, warnings: r.warnings };
@@ -88,7 +90,7 @@ export async function openStorage(factory, opts = {}) {
 
     async save(book) {
       await write(db, (s) => {
-        s.put(toBackup(book, now()), BOOK);
+        s.put(toBackup(book, now(), lang), BOOK);
       });
     },
 
@@ -97,7 +99,7 @@ export async function openStorage(factory, opts = {}) {
         const req = s.get(BOOK);
         req.onsuccess = () => {
           s.put(req.result === undefined ? null : req.result, UNDO);
-          s.put(toBackup(book, now()), BOOK);
+          s.put(toBackup(book, now(), lang), BOOK);
         };
       });
     },

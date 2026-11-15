@@ -40,6 +40,7 @@ const HAN = /[㐀-鿿]/;
  * @property {boolean} selectable 画面で開ける言語か(URL の ?lang=。見本だけの言語は false)
  * @property {{ replace: Readonly<Record<string, string>>, buttons: readonly string[] } | null} typing
  *   入力の補助。replace は打った文字列の置き換え(「a:」→「ä」)、buttons は入力欄の下に出す文字のボタン。無ければ null
+ * @property {string} example 取り込み欄に灰色で見せ、「例を入れる」で入れる簡易形式の例(どの行も注意なく語として読める。tests/core/lang.test.js)
  */
 
 /** 英語の簡易形式の列(授業版の simple/v1 と同じ並び) */
@@ -73,6 +74,12 @@ export const LANGS = Object.freeze({
     articles: null,
     selectable: true,
     typing: null,
+    // 授業版の SIMPLE_EXAMPLE と同じ(core/importFormat.js はこれを SIMPLE_EXAMPLE として出す)
+    example: [
+      'allocate | 動(他) | 割り当てる | The manager allocated the budget. | 部長が予算を割り当てた。 | allocate A to B',
+      'reimburse | 動(他) | 払い戻す',
+      'itinerary | 名 | 旅程',
+    ].join('\n'),
   }),
   de: Object.freeze({
     id: 'de',
@@ -102,6 +109,11 @@ export const LANGS = Object.freeze({
       replace: Object.freeze({ 'a:': 'ä', 'o:': 'ö', 'u:': 'ü', 'A:': 'Ä', 'O:': 'Ö', 'U:': 'Ü' }),
       buttons: Object.freeze(['ä', 'ö', 'ü', 'ß']),
     }),
+    example: [
+      'fahren | 動(自) | | fährt, fuhr, ist gefahren | (乗り物で)行く | Wir fahren nach Berlin. | 私たちはベルリンへ行く。 | 4格をとると「運転する」',
+      'Hund | 名 | der | Hunde | 犬',
+      'groß | 形 | | größer, am größten | 大きい',
+    ].join('\n'),
   }),
   zh: Object.freeze({
     id: 'zh',
@@ -125,6 +137,7 @@ export const LANGS = Object.freeze({
     articles: null,
     selectable: false,
     typing: null,
+    example: '你好 | nǐ hǎo | 間 | こんにちは',
   }),
 });
 

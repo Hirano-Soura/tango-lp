@@ -39,14 +39,10 @@ export const CURRENT_JSON_FORMAT = 'tango-drill/v1';
 export const BACKUP_FORMAT_PREFIX = 'tango-drill-backup/';
 
 /**
- * 取り込み欄に灰色で見せ、「例を入れる」で入れる簡易形式の例(Docs/23_Screens.md §3)。
+ * 取り込み欄に灰色で見せ、「例を入れる」で入れる英語の簡易形式の例(Docs/23_Screens.md §3)。本体は英語の設定の example(core/lang.js)。
  * 全項目の行・途中までの行を 1 つずつ含める。どの行も語として読めることを tests/core/importFormat.test.js が確かめる。
  */
-export const SIMPLE_EXAMPLE = [
-  'allocate | 動(他) | 割り当てる | The manager allocated the budget. | 部長が予算を割り当てた。 | allocate A to B',
-  'reimburse | 動(他) | 払い戻す',
-  'itinerary | 名 | 旅程',
-].join('\n');
+export const SIMPLE_EXAMPLE = LANGS.en.example;
 
 /** JSON の版ごとの読み手。過去の版の読み手を消さない(INV-3) */
 const JSON_READERS = /** @type {Record<string, (data: Record<string, unknown>, lang: LangSpec) => ParseResult>} */ ({

@@ -12,7 +12,11 @@ import * as stats from './tabs/stats.js';
 import * as settings from './tabs/settings.js';
 import * as qa from './tabs/qa.js';
 import * as notice from './tabs/notice.js';
-import { NOTICES, unreadImportant, unreadIds } from '../core/notices.js';
+import { NOTICES as ALL_NOTICES, noticesFor, unreadImportant, unreadIds } from '../core/notices.js';
+import { LANG, IS_DEFAULT } from './lang.js';
+
+/** この単語帳の言語に出すお知らせ(自他のお知らせは英語だけ) */
+const NOTICES = noticesFor(ALL_NOTICES, LANG);
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
 /** @typedef {import('./dom.js').TabId} TabId */
@@ -35,6 +39,12 @@ const nav = /** @type {HTMLElement} */ (document.getElementById('tabs'));
 const toast = /** @type {HTMLElement} */ (document.getElementById('toast'));
 
 async function main() {
+  // 英語(既定)以外の単語帳は、見出しとタブの名前に言語を出す(英語は授業版と同じ見た目)
+  if (!IS_DEFAULT) {
+    const h1 = document.querySelector('header h1');
+    if (h1) h1.textContent = `${h1.textContent}(${LANG.name})`;
+    document.title = `${document.title}(${LANG.name})`;
+  }
   const storage = await openStorage(indexedDB);
   const loaded = await storage.load(today());
   const app = {

@@ -36,6 +36,7 @@ git fetch upstream && git log 2f8d166fbc58bdb8a8ef0e6397de6cbea491e017..upstream
 | 変更 | 理由 | 検査 |
 | --- | --- | --- |
 | 言語ごとの設定の層 `core/lang.js` を足し、取り込み(`core/importFormat.js`)・確認表(`core/importPlan.js`)・依頼文(`core/aiPrompt.js`)・読み上げ(`core/speech.js`)・画面(`app/`。`app/lang.js` の `LANG` から引く)を言語の設定を引く形にした。授業版と同じ名前の関数は英語の宣言を引く形で残した(`Docs/26_Languages.md`) | 多言語化(学習ポータル 項目37 第3段)。英語の挙動は授業版と同じに保つ | `tests/core/lang.test.js`・`tests/core/langLayer.test.js`(英語を明示しても既定と同じ・中国語の見本・陽性対照)・`tests/app/lang.test.js`(画面に言語の決め打ちが無い。陽性対照つき)。授業版から引き継いだ検査はすべてそのまま通る |
+| ドイツ語: `core/inflection.js`(性・格支配・変化)・語の鍵に性(`core/word.js` の `keyOf`。性の無い語は授業版と同じ)・依頼文 `de/v1`・`?lang=de`(`app/lang.js`)・言語ごとのデータベース・バックアップの `lang` 欄(`core/backup.js`)・入力欄と表示(`app/wordForm.js`)・お知らせの `requires`(`core/notices.js`) | 学習ポータル 項目37 第4a・4b段 | `tests/core/german.test.js`・`tests/app/langBook.test.js`・`tests/e2e/german.spec.js`(陽性対照つき)。英語の検査はそのまま通る |
 | 版の系統: `0.24.0` の後を授業版と別に数える(`0.25.0` から) | 授業版の版上げは `feat` のコミットの中にあり、どちらの系統にしても取り込みで版の行は衝突する。新LP版の変更を版で区別できる方を選んだ | `tests/core/version.test.js`(3 か所の一致) |
 | データベース名 `tango-drill` → `tango-lp`(`app/storage.js` の `DB_NAME`。名前の正は `core/lang.js` の `dbName`) | 授業版と同じ `hirano-soura.github.io` に置くと、IndexedDB がパスで分かれないため、同じブラウザで同じ単語帳を読み書きしてしまう(`Docs/22_Storage.md` §1) | `tests/app/storage.test.js` の「新LP版:」の 2 本(戻すと落ちる陽性対照つき) |
 

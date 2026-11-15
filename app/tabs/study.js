@@ -3,7 +3,7 @@
 // 「思い浮かべた訳が選択肢に無い」から選ぶ。判定と記録は core の stage1Record / stage2Judge(Docs/21_Quiz.md §6)。
 
 import { esc, actionOf } from '../dom.js';
-import { posLine, jaHtml } from '../wordForm.js';
+import { posLine, jaHtml, headHtml } from '../wordForm.js';
 import { keyOf, isPhrase, KIND_NAMES } from '../../core/word.js';
 import { sessionsOf } from '../../core/book.js';
 import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record, stage2Judge, statOf } from '../../core/review.js';
@@ -11,6 +11,7 @@ import { studyOrder } from '../../core/studyOrder.js';
 import { buildChoices, quizModes } from '../../core/distractors.js';
 import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
 import { speechText } from '../../core/speech.js';
+import { headword } from '../../core/inflection.js';
 import * as speech from '../speech.js';
 import { LANG } from '../lang.js';
 
@@ -172,7 +173,7 @@ function renderQuiz(ctx) {
   const note = group ? groupLabel(group, ctx, cur) : orderNote(ctx, cur);
   const head = `<p class="meta">${qz.idx + 1} / ${qz.items.length}${st.format === 'choice' ? ` ｜ 正答 ${qz.ok} ｜ 第 ${qz.stage} 段階` : ''}` +
     (note ? ` ｜ ${note}` : '') + '</p>';
-  const stem = `<div class="stemrow"><div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="${LANG.htmlLang}">${esc(cur.en)}</div>${sayButton(ctx, 'en', '発音')}</div>`;
+  const stem = `<div class="stemrow"><div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="${LANG.htmlLang}">${headHtml(cur)}</div>${sayButton(ctx, 'en', '発音')}</div>`;
   autoSay(ctx, qz, cur);
   const pause = '<button data-action="pause">中断</button>';
   if (st.format === 'card' || (qz.choice && !qz.choice.ok)) {
@@ -242,7 +243,7 @@ function sayButton(ctx, what, label) {
  */
 function autoSay(ctx, qz, cur) {
   if (qz.said === qz.idx) return;
-  if (!ctx.settings.speechAuto || speech.speak(speechText(cur.en), ctx.settings)) qz.said = qz.idx;
+  if (!ctx.settings.speechAuto || speech.speak(speechText(headword(cur)), ctx.settings)) qz.said = qz.idx;
 }
 
 /**
@@ -335,7 +336,7 @@ function bind(ctx) {
     if (act === 'say') {
       const w = qz.items[qz.idx]?.word;
       const now = w && ctx.book.words.find((x) => keyOf(x) === keyOf(w));
-      if (now) speech.speak(el.dataset.say === 'ex' ? now.ex ?? '' : speechText(now.en), ctx.settings);
+      if (now) speech.speak(el.dataset.say === 'ex' ? now.ex ?? '' : speechText(headword(now)), ctx.settings);
       return;
     }
     if (act === 'pause') {

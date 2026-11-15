@@ -4,9 +4,10 @@
 // お知らせは 1 つずつ開閉できる欄にする(既定は閉じている。開閉はタブを移っても残る。app/dom.js の foldOpen)。
 
 import { esc, actionOf, unfold, foldOpen, bindFolds } from '../dom.js';
-import { NOTICES } from '../../core/notices.js';
+import { NOTICES, noticesFor } from '../../core/notices.js';
 import { needsTrans } from '../../core/word.js';
 import { prepareTrans } from '../aiView.js';
+import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/notices.js').Notice} Notice */
@@ -24,7 +25,7 @@ export function setFresh(ids) {
 
 /** @param {Ctx} ctx */
 export function render(ctx) {
-  ctx.root.innerHTML = NOTICES.map((n) => noticeHtml(ctx, n)).join('');
+  ctx.root.innerHTML = noticesFor(NOTICES, LANG).map((n) => noticeHtml(ctx, n)).join('');
   bindFolds(ctx.root);
   ctx.root.onclick = (e) => {
     if (actionOf(e)?.dataset.action !== 'notice-trans') return;

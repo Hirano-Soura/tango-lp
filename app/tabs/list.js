@@ -1,7 +1,7 @@
 // 単語帳タブ: 一覧・絞り込み・印・編集・削除。削除と編集は直後に「元に戻す」で取り消せる。
 
 import { esc, actionOf } from '../dom.js';
-import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
+import { wordFields, readWordFields, posLine, jaHtml, headHtml, bindTyping } from '../wordForm.js';
 import { keyOf, isPhrase, KIND_NAMES } from '../../core/word.js';
 import { editWord, deleteWord, toggleStar } from '../../core/book.js';
 import { filterWords } from '../../core/search.js';
@@ -23,7 +23,7 @@ export function render(ctx) {
   let h = '';
   if (editing !== null) {
     const w = /** @type {import('../../core/word.js').Word} */ (book.words.find((x) => keyOf(x) === editing));
-    h += `<section class="panel" id="edit-panel"><h2>編集: ${esc(w.en)}</h2>
+    h += `<section class="panel" id="edit-panel"><h2>編集: ${headHtml(w)}</h2>
       <form id="edit-form" class="wordform">${wordFields(w, 'edit')}
         <div class="rowbtns"><button type="submit" class="primary">保存する</button><button type="button" data-action="cancel">やめる</button></div>
       </form><p class="msg err" role="status">${esc(editError)}</p></section>`;
@@ -57,7 +57,7 @@ function wordsHtml(book) {
     h += `<li class="word" data-key="${esc(k)}">
       <button class="star${star.has(k) ? ' on' : ''}" data-action="star" aria-pressed="${star.has(k)}" aria-label="印">★</button>
       <div class="body">
-        <div><span class="en${isPhrase(w) ? ' ph' : ''}" lang="${LANG.htmlLang}">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span></div>
+        <div><span class="en${isPhrase(w) ? ' ph' : ''}" lang="${LANG.htmlLang}">${headHtml(w)}</span> <span class="meta">${posLine(w)}</span></div>
         <div class="ja">${jaHtml(w.ja)}</div>
         ${w.ex ? `<div class="ex" lang="${LANG.htmlLang}">${esc(w.ex)}</div>` : ''}${sub ? `<div class="ex">${sub}</div>` : ''}
         <div class="meta">${meta}</div>
@@ -72,6 +72,7 @@ function wordsHtml(book) {
 
 /** @param {Ctx} ctx */
 function bind(ctx) {
+  bindTyping(ctx.root);
   const search = /** @type {HTMLInputElement | null} */ (ctx.root.querySelector('#q'));
   const list = /** @type {HTMLElement | null} */ (ctx.root.querySelector('#words'));
   if (search && list) {
@@ -89,7 +90,7 @@ function bind(ctx) {
     const key = editing;
     form.onsubmit = async (e) => {
       e.preventDefault();
-      const r = editWord(ctx.book, key, readWordFields(form));
+      const r = editWord(ctx.book, key, readWordFields(form), LANG);
       if (!r.ok) {
         editError = r.error;
         ctx.rerender();

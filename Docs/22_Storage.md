@@ -105,7 +105,7 @@ flowchart LR
 
 | 項目 | 値 |
 | --- | --- |
-| データベース | `tango-lp`(版 1)。授業版 `tango-drill` から変えた(下の注・`UPSTREAM.md`) |
+| データベース | `tango-lp`(版 1)。授業版 `tango-drill` から変えた(下の注・`UPSTREAM.md`)。**言語ごとに別**(ドイツ語は `tango-lp-de`。名前の正は `core/lang.js` の `dbName`。[26_Languages.md](26_Languages.md) §3) |
 | オブジェクトストア | `kv`(キーは外から与える) |
 | キー `book` | 今の単語帳。**バックアップと同じ形**(`toBackup`) |
 | キー `undo` | 復元の直前の単語帳(同じ形)。直前に何も保存されていなければ `null` |
@@ -115,7 +115,8 @@ flowchart LR
   `http://127.0.0.1:8765` と `https://hirano-soura.github.io` は別の単語帳になるが、
   同じオリジンの別のパスに置いた別のアプリが同じデータベース名を使うと、同じ単語帳を読み書きする
   (fork して同じ GitHub Pages のドメインに置く場合。[52_Pitfalls.md](52_Pitfalls.md) P-13)。
-  新LP版はこのためにデータベース名を `tango-lp` に変え、授業版 `tango-drill` と分けた(`tests/app/storage.test.js` の「新LP版:」)
+  新LP版はこのためにデータベース名を `tango-lp` に変え、授業版 `tango-drill` と分けた(`tests/app/storage.test.js` の「新LP版:」)。
+  バックアップの `lang` 欄と、別の言語のファイルを読まない規則は [26_Languages.md](26_Languages.md) §3
 
 - **保存した中身もバックアップの読み手(`readBackup`)で読む。** 保存の形とバックアップの形を 1 つにして、
   保存した中身も INV-3 の対象にする(アプリを更新しても、端末に残った単語帳を読める)

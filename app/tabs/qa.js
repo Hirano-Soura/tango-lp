@@ -9,6 +9,11 @@ import { LANG } from '../lang.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 
+/** 自他を持つ言語(英語)の単語帳にだけ出す質問 */
+const TRANS_ONLY = new Set(['品詞の横の「他」「自」は何ですか?', '前から登録してある語に自他(他・自)を付けるには?']);
+/** @param {[string, string]} item */
+const shown = ([q]) => LANG.fields.includes('trans') || !TRANS_ONLY.has(q);
+
 /**
  * 質問の群。答えはアプリの中の固定の文なので、esc を通さず HTML として入れる。
  * @type {{ title: string, items: [string, string][] }[]}
@@ -98,7 +103,7 @@ export function render(ctx) {
     ${foldOpen('qa-panel')}
       <summary><h2>よくある質問</h2></summary>
       ${QA.map((g) => `<h3 class="qa-group">${g.title}</h3>
-        ${g.items.map(([q, a]) => `<details class="qa"><summary>${q}</summary><p>${a}</p></details>`).join('')}`).join('')}
+        ${g.items.filter(shown).map(([q, a]) => `<details class="qa"><summary>${q}</summary><p>${a}</p></details>`).join('')}`).join('')}
     </details>
     ${foldOpen('survey-panel')}
       <summary><h2>改善アンケート</h2></summary>

@@ -10,6 +10,7 @@
  * @property {boolean} important 重要なお知らせ。読むまで通知タブのボタンに赤い点を出す
  * @property {string[]} body 段落。アプリの中の固定の文なので、画面は esc を通さず HTML として入れる
  * @property {'trans'} [action] 本文の下に出す操作。trans は「自他の無い動詞に自他を補う」(Docs/20_ImportFormat.md §6)
+ * @property {string} [requires] この項目(core/lang.js の fields)を持つ言語の単語帳にだけ出す(新LP版。自他のお知らせは英語だけ)
  */
 
 /** @type {readonly Readonly<Notice>[]} */
@@ -31,6 +32,7 @@ export const NOTICES = Object.freeze([
         + '1 語ずつ直すときは、「単語帳」の「編集」で「自他」を選びます。',
     ],
     action: 'trans',
+    requires: 'trans',
   },
   {
     id: '2026-10-07-speech',
@@ -45,6 +47,16 @@ export const NOTICES = Object.freeze([
     ],
   },
 ]);
+
+/**
+ * その言語の単語帳に出すお知らせ(requires の項目を言語が持つものだけ)。
+ * @param {readonly Readonly<Notice>[]} notices
+ * @param {Pick<import('./lang.js').LangSpec, 'fields'>} lang
+ * @returns {Readonly<Notice>[]}
+ */
+export function noticesFor(notices, lang) {
+  return notices.filter((n) => !n.requires || lang.fields.includes(n.requires));
+}
 
 /**
  * まだ読んでいない重要なお知らせ。1 つでもあれば、通知タブのボタンに赤い点を出す。

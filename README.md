@@ -1,7 +1,8 @@
 # tango-lp(新LP版)
 
 > **これは授業版 `tango-drill` を fork した個人用の単語帳(新LP版)。** 英語に加えてドイツ語に広げる。
-> 公開先は `https://hirano-soura.github.io/tango-lp/`。授業版とは単語帳(データベース)が分かれている。
+> 公開先は `https://hirano-soura.github.io/tango-lp/`(英語)と `https://hirano-soura.github.io/tango-lp/?lang=de`(ドイツ語)。
+> 授業版とも、英語とドイツ語の間でも、単語帳(データベース)が分かれている。言語ごとの仕組みは [Docs/26_Languages.md](Docs/26_Languages.md)。
 > 授業版との同期は [UPSTREAM.md](UPSTREAM.md)。以下の本文は授業版から引き継いだもので、授業版の公開先と運用を指す箇所がある。
 
 英単語を**自分の単語帳**として登録し、4 択・カードで復習する Web アプリ(開発中)。
