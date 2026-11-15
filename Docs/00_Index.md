@@ -30,6 +30,7 @@
 | 文書 | 理由 |
 | --- | --- |
 | `README.md` | 利用者向けの操作手順(CLAUDE.md §2 の読み替え) |
+| `UPSTREAM.md` | 新LP版だけ: 授業版 `tango-drill` との同期台帳(同期点・変えたところ・取り込まなかったコミット) |
 | `BRANCHING.md` | 今の管理者向け: `main` を守り、ブランチ → PR → 承認で統合する運用へ切り替える手順(引き継ぎの段階 1。`PUBLISHING.md` と組) |
 | `PUBLISHING.md` | 先生向け: 個人アカウントから学校の Organization への公開の引き継ぎ手順 |
 | `CLAUDE.md` | Claude Code への指示(差分のみ) |

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { IDBFactory } from 'fake-indexeddb';
-import { openStorage, DEFAULT_SETTINGS } from '../../app/storage.js';
+import { openStorage, DEFAULT_SETTINGS, DB_NAME, UPSTREAM_DB_NAME } from '../../app/storage.js';
 import { backupText, parseBackup, readBackup, toBackup, CURRENT_BACKUP_FORMAT } from '../../core/backup.js';
 import { countBook, emptyBook } from '../../core/book.js';
 
@@ -54,6 +54,27 @@ test('保存の陽性対照: 別の IndexedDB(別のブラウザに当たる)に
   assert.deepEqual((await b.load(TODAY)).book, emptyBook());
   a.close();
   b.close();
+});
+
+test('新LP版: 同じオリジン(同じ IndexedDB)の授業版とは単語帳が分かれる', async () => {
+  assert.notEqual(DB_NAME, UPSTREAM_DB_NAME);
+  const factory = new IDBFactory();
+  const lp = await open(factory);
+  await lp.save(sample());
+  const drill = await openStorage(factory, { name: UPSTREAM_DB_NAME, now: () => NOW });
+  assert.deepEqual((await drill.load(TODAY)).book, emptyBook());
+  lp.close();
+  drill.close();
+});
+
+test('新LP版の陽性対照: 同じオリジンで同じデータベース名を使うと、授業版の単語帳が見える', async () => {
+  const factory = new IDBFactory();
+  const lp = await openStorage(factory, { name: UPSTREAM_DB_NAME, now: () => NOW });
+  await lp.save(sample());
+  const drill = await openStorage(factory, { name: UPSTREAM_DB_NAME, now: () => NOW });
+  assert.deepEqual((await drill.load(TODAY)).book, sample());
+  lp.close();
+  drill.close();
 });
 
 test('T-4: A で書き出した中身を B で読み込むと、語数と記録件数が一致する', async () => {
@@ -224,7 +245,7 @@ test('設定: 読んだお知らせ(noticesSeen)は文字列の配列だけを�
  */
 function rawOpen(factory) {
   return new Promise((resolve, reject) => {
-    const req = factory.open('tango-drill');
+    const req = factory.open(DB_NAME);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });

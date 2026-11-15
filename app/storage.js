@@ -8,7 +8,14 @@ import { emptyBook } from '../core/book.js';
 
 /** @typedef {import('../core/book.js').Book} Book */
 
-export const DB_NAME = 'tango-drill';
+/**
+ * データベース名。新LP版(tango-lp)は授業版(tango-drill)と同じ hirano-soura.github.io に置くため、名前を変えて単語帳を分ける
+ * (IndexedDB はオリジンで分かれ、パスでは分かれない。Docs/22_Storage.md §1・UPSTREAM.md)。
+ * 授業版の名前 UPSTREAM_DB_NAME へ戻すと、同じブラウザで授業版と同じ単語帳を読み書きする(tests/app/storage.test.js が落とす)。
+ */
+export const DB_NAME = 'tango-lp';
+/** 授業版のデータベース名(検査で「戻っていない」ことを確かめるためだけに使う) */
+export const UPSTREAM_DB_NAME = 'tango-drill';
 const DB_VERSION = 1;
 const STORE = 'kv';
 /** 今の単語帳 */
